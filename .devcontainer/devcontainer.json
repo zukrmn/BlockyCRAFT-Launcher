@@ -1,0 +1,39 @@
+{
+    "name": "BlockyCRAFT Launcher Dev",
+    "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+    // Instala bibliotecas do Linux necessárias para o Electron rodar (GUI, Audio, etc)
+    "onCreateCommand": "sudo apt-get update && sudo apt-get install -y libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libgbm1 libasound2 libpangocairo-1.0-0 libxss1 libgtk-3-0 libxshmfence1 libglu1-mesa",
+    // Instala dependências do projeto após o container subir
+    "postCreateCommand": "npm install",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "svelte.svelte-vscode",
+                "dbaeumer.vscode-eslint",
+                "esbenp.prettier-vscode",
+                "bradlc.vscode-tailwindcss"
+            ],
+            "settings": {
+                "editor.formatOnSave": true
+            }
+        }
+    },
+    // Configurações CRUCIAIS para rodar GUI (Electron) de dentro do Docker no Linux
+    "runArgs": [
+        "--net=host",
+        "-v",
+        "/tmp/.X11-unix:/tmp/.X11-unix", // Monta o socket X11
+        "-e",
+        "DISPLAY=${localEnv:DISPLAY}", // Passa a variável de display do host
+        "--security-opt",
+        "seccomp=unconfined", // Necessário para o Chrome/Electron sandbox funcionar
+        "--device",
+        "/dev/dri:/dev/dri" // Acesso à GPU para renderização suave
+    ],
+    // Expõe a porta do Vite/Svelte (HMR)
+    "forwardPorts": [
+        5173
+    ],
+    // Usuário padrão do container (node)
+    "remoteUser": "node"
+}
