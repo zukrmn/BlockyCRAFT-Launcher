@@ -21,6 +21,21 @@ An open-source Minecraft launcher built with modern web technologies and a nosta
 - Node.js (v20+)
 - npm
 
+### 🐳 Running in DevContainer (Best Experience)
+If you are using VS Code DevContainers, follow these **Host-side** steps first (Linux):
+
+1. **Allow Graphics Access**:
+   Open your terminal (on the host machine) and run:
+   ```bash
+   xhost +
+   ```
+2. **Open in Container**:
+   Press `F1` in VS Code -> "Dev Containers: Reopen in Container".
+3. **Wait for Install**:
+   The container will automatically install all dependencies (`npm install`) and configure permissions.
+
+
+
 ### Installation
 ```bash
 npm install

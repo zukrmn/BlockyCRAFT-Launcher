@@ -42,5 +42,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglx-mesa0 \
     libopenal1 \
+    # Configura permissões do usuário
+    && usermod -aG audio,video,plugdev node || true \
+    && groupadd -f input \
+    && usermod -aG input node || true \
     # Limpeza de cache
     && rm -rf /var/lib/apt/lists/*
+
