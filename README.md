@@ -26,6 +26,14 @@ An open-source Minecraft launcher built with modern web technologies and a nosta
 npm install
 ```
 
+### Running the Project
+After installing dependencies, run:
+
+```bash
+npm run dev
+```
+This command builds the Electron app and starts the dev server. It will wait for the local server to be ready before launching the Electron window.
+
 ### Development
 You can run the launcher in two modes:
 
