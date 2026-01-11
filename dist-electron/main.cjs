@@ -30,9 +30,6 @@ import_electron.app.commandLine.appendSwitch("disable-software-rasterizer");
 import_electron.app.commandLine.appendSwitch("disable-dev-shm-usage");
 console.log("=== BlockyCRAFT Launcher Starting ===");
 console.log("Electron version:", process.versions.electron);
-console.log("Node version:", process.versions.node);
-console.log("DISPLAY:", process.env["DISPLAY"]);
-console.log("VITE_DEV_SERVER_URL:", process.env["VITE_DEV_SERVER_URL"]);
 var mainWindow = null;
 var VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 function createWindow() {
@@ -53,36 +50,22 @@ function createWindow() {
     backgroundColor: "#0f0f0f",
     show: true
   });
-  console.log("Window created, loading content...");
   if (VITE_DEV_SERVER_URL) {
-    console.log("Loading from Vite dev server:", VITE_DEV_SERVER_URL);
     mainWindow.loadURL(VITE_DEV_SERVER_URL);
     mainWindow.webContents.openDevTools();
   } else {
     const filePath = import_node_path.default.join(__dirname, "../dist/index.html");
-    console.log("Loading from file:", filePath);
     mainWindow.loadFile(filePath);
   }
-  mainWindow.webContents.on("did-finish-load", () => {
-    console.log("Content loaded successfully!");
-  });
-  mainWindow.webContents.on("did-fail-load", (event, errorCode, errorDescription) => {
-    console.error("Failed to load:", errorCode, errorDescription);
-  });
   mainWindow.on("closed", () => {
-    console.log("Window closed");
     mainWindow = null;
   });
 }
-console.log("Waiting for app ready...");
 import_electron.app.whenReady().then(() => {
-  console.log("App is ready!");
   createWindow();
-}).catch((err) => {
-  console.error("App ready failed:", err);
+  setupIPC();
 });
 import_electron.app.on("window-all-closed", () => {
-  console.log("All windows closed");
   if (process.platform !== "darwin") {
     import_electron.app.quit();
   }
@@ -92,5 +75,38 @@ import_electron.app.on("activate", () => {
     createWindow();
   }
 });
-console.log("Main process initialized");
+function setupIPC() {
+  import_electron.ipcMain.on("launch-game", (event, options) => {
+    console.log("[Main] Launch requested for:", options.username);
+    const sender = event.sender;
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 5;
+      const totalSize = 100 * 1024 * 1024;
+      const currentSize = progress / 100 * totalSize;
+      sender.send("download-progress", {
+        type: "download",
+        current: currentSize,
+        total: totalSize
+      });
+      if (progress % 20 === 0) {
+        const logs = [
+          "Downloading lwjgl.jar...",
+          "Verifying assets index...",
+          "Unpacking natives...",
+          "Checking game hash..."
+        ];
+        const log = logs[Math.floor(Math.random() * logs.length)];
+        sender.send("log-message", `[Backend] ${log}`);
+      }
+      if (progress >= 100) {
+        clearInterval(interval);
+        sender.send("log-message", "[Backend] Launching java process...");
+        setTimeout(() => {
+          sender.send("game-launched");
+        }, 1e3);
+      }
+    }, 200);
+  });
+}
 //# sourceMappingURL=main.cjs.map
