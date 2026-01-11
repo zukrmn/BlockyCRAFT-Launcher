@@ -31,8 +31,9 @@
         "--ipc=host",
         "--security-opt",
         "seccomp=unconfined",
-        "--device",
-        "/dev/dri:/dev/dri"
+        "--device=/dev/dri:/dev/dri",
+        "--device=/dev/snd:/dev/snd",
+        "--device=/dev/input:/dev/input"
     ],
     // Variáveis de ambiente para X11, Wayland, Electron e Java GUI
     "containerEnv": {

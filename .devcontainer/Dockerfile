@@ -38,5 +38,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fontconfig \
     libfreetype6 \
     libxxf86vm1 \
+    libgl1 \
+    libglx-mesa0 \
+    libopenal1 \
     # Limpeza de cache
     && rm -rf /var/lib/apt/lists/*
