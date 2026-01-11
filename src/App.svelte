@@ -1,166 +1,130 @@
 <script lang="ts">
-  let username = $state('');
-  
-  function handlePlay() {
-    if (!username.trim()) {
-      alert('Por favor, insira um nome de usuário!');
-      return;
+  import { onMount } from "svelte";
+  import Background from "./components/Background.svelte";
+  import LoginCard from "./components/LoginCard.svelte";
+  import ProgressBar from "./components/ProgressBar.svelte";
+  import {
+    gameState,
+    downloadProgress,
+    statusMessage,
+    addLog,
+    logs,
+  } from "./stores/launcher";
+  import "./app.css";
+
+  function handlePlay(username: string) {
+    if (window.api) {
+      // Real Electron Integration
+      gameState.set("PREPARING");
+      window.api.launchGame({ username });
+    } else {
+      // Mock Mode
+      console.log("Starting Mock Mode...");
+      gameState.set("DOWNLOADING");
+      statusMessage.set("Iniciando download...");
+      addLog("[INIT] Mock Mode Initiated");
+
+      let progress = 0;
+      downloadProgress.set(0);
+
+      const interval = setInterval(() => {
+        progress += 2;
+        downloadProgress.set(progress);
+
+        // Simulating logs
+        if (progress % 10 === 0 && progress < 100) {
+          const fakeLogs = [
+            "Baixando minecraft.jar...",
+            "Verificando assets...",
+            "Atualizando bibliotecas...",
+            "Descompactando nativos...",
+            "Validando hash...",
+          ];
+          const log = fakeLogs[Math.floor(progress / 20) % fakeLogs.length];
+          statusMessage.set(log);
+          addLog(`[INFO] ${log}`);
+        }
+
+        if (progress >= 100) {
+          clearInterval(interval);
+          // Small delay to ensure progress bar looks full before switch
+          setTimeout(() => {
+            gameState.set("PLAYING");
+            statusMessage.set("Jogo iniciado!");
+            addLog("[INFO] Launching game instance...");
+          }, 500);
+        }
+      }, 100);
     }
-    console.log('Launching game for:', username);
-    // Future: window.electronAPI.send('launch-game', { username });
   }
+
+  onMount(() => {
+    if (window.api) {
+      window.api.onProgress((data) => {
+        downloadProgress.set((data.current / data.total) * 100);
+        statusMessage.set(
+          `Baixando... ${(data.current / 1024 / 1024).toFixed(1)}MB / ${(data.total / 1024 / 1024).toFixed(1)}MB`,
+        );
+      });
+      window.api.onLog(addLog);
+      window.api.onError((err) => {
+        gameState.set("ERROR");
+        statusMessage.set(`Erro: ${err}`);
+      });
+    }
+  });
 </script>
 
-<main class="launcher">
-  <div class="launcher-card">
-    <div class="logo-section">
-      <h1 class="logo-text">
-        <span class="logo-blocky">Blocky</span><span class="logo-craft">CRAFT</span>
-      </h1>
-      <p class="version-text">Minecraft Beta 1.7.3</p>
-    </div>
+<main
+  class="relative w-screen h-screen flex flex-col items-center justify-center overflow-hidden font-sans text-white"
+>
+  <Background />
 
-    <div class="input-section">
-      <label for="username" class="input-label">Nome de Usuário</label>
-      <input
-        type="text"
-        id="username"
-        bind:value={username}
-        placeholder="Digite seu username..."
-        class="username-input"
-        maxlength="16"
-      />
-    </div>
+  <div
+    class="z-10 w-full max-w-md flex flex-col items-center gap-8 animate-fade-in-up"
+  >
+    {#if $gameState === "IDLE"}
+      <LoginCard onPlay={handlePlay} />
+    {:else}
+      <div
+        class="w-full bg-zinc-900/60 backdrop-blur-md rounded-xl p-6 border border-white/10 flex flex-col gap-4 text-center shadow-2xl"
+      >
+        <h2 class="text-2xl font-minecraft mb-2">BlockyCRAFT</h2>
 
-    <button 
-      class="play-button"
-      onclick={handlePlay}
-      disabled={!username.trim()}
-    >
-      JOGAR
-    </button>
-
-    <p class="footer-text">
-      Feito com ❤️ para a comunidade
-    </p>
+        {#if $gameState === "PLAYING"}
+          <div
+            class="flex flex-col items-center justify-center py-8 gap-4 animate-in fade-in zoom-in duration-500"
+          >
+            <div
+              class="text-emerald-400 font-bold text-2xl tracking-widest drop-shadow-[0_0_10px_rgba(52,211,153,0.5)]"
+            >
+              JOGO EM EXECUÇÃO
+            </div>
+            <p class="text-zinc-400 text-sm">
+              A janela do jogo deve abrir em instantes...
+            </p>
+          </div>
+        {:else if $gameState === "ERROR"}
+          <div
+            class="text-red-400 font-bold p-4 border border-red-500/20 rounded bg-red-500/10"
+          >
+            {$statusMessage}
+          </div>
+        {:else}
+          <ProgressBar />
+          <div
+            class="h-32 bg-black/50 rounded p-2 text-left text-xs font-mono text-zinc-400 overflow-y-auto flex flex-col-reverse"
+          >
+            {#each [...$logs].reverse() as log}
+              <div
+                class="whitespace-pre-wrap py-0.5 border-b border-white/5 last:border-0"
+              >
+                {log}
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
+    {/if}
   </div>
 </main>
-
-<style>
-  .launcher {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%);
-    padding: 1rem;
-  }
-
-  .launcher-card {
-    background: rgba(15, 15, 15, 0.9);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
-    padding: 3rem 2.5rem;
-    width: 100%;
-    max-width: 400px;
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-    box-shadow: 
-      0 25px 50px -12px rgba(0, 0, 0, 0.5),
-      0 0 0 1px rgba(255, 255, 255, 0.05);
-  }
-
-  .logo-section {
-    text-align: center;
-  }
-
-  .logo-text {
-    font-size: 2.5rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    margin-bottom: 0.5rem;
-  }
-
-  .logo-blocky {
-    color: #10b981;
-  }
-
-  .logo-craft {
-    color: #ffffff;
-  }
-
-  .version-text {
-    color: #6b7280;
-    font-size: 0.875rem;
-    font-weight: 500;
-  }
-
-  .input-section {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .input-label {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #a3a3a3;
-  }
-
-  .username-input {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    padding: 1rem 1.25rem;
-    font-size: 1rem;
-    color: #ffffff;
-    outline: none;
-    transition: all 0.2s ease;
-  }
-
-  .username-input::placeholder {
-    color: #525252;
-  }
-
-  .username-input:focus {
-    border-color: #10b981;
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
-  }
-
-  .play-button {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    border: none;
-    border-radius: 10px;
-    padding: 1rem 2rem;
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: #ffffff;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    letter-spacing: 0.05em;
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-  }
-
-  .play-button:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-  }
-
-  .play-button:active:not(:disabled) {
-    transform: translateY(0);
-  }
-
-  .play-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .footer-text {
-    text-align: center;
-    font-size: 0.75rem;
-    color: #525252;
-  }
-</style>
