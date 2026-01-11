@@ -37,6 +37,14 @@ export class GameHandler {
             const instanceDir = path.join(app.getPath('userData'), 'instances', 'default', 'instance.cfg');
             return fs.existsSync(instanceZipPath) || fs.existsSync(instanceDir);
         });
+
+        ipcMain.handle('check-update-status', async () => {
+            return this.handleUpdateCheck();
+        });
+
+        ipcMain.handle('perform-update', async (event) => {
+            return this.handlePerformUpdate(event);
+        });
     }
 
     private sendProgress(sender: Electron.WebContents, status: string, progress: number) {
@@ -91,6 +99,31 @@ export class GameHandler {
 
         // Fallback to old behavior (instance.zip or existing dir)
         const oldZip = path.resolve('instance.zip');
+
+        // DOWNLOAD instance.zip IF MISSING (VPS Support)
+        if (!fs.existsSync(oldZip) && !fs.existsSync(path.join(instanceDir, 'instance.cfg'))) {
+            console.log('instance.zip not found locally. Attempting to download from VPS...');
+            // We need a sender to show progress, but checkAndExtractInstance doesn't have it passed usually.
+            // For now, we'll log it. Ideally we refactor to pass sender.
+            // Note: Since this is called before typical progress events, we might want to just blocking download.
+            try {
+                // HACK: utilizing a temporary Electron sender mock or just console logging if specific progress isn't critical here
+                // But actually, verify if we can access the downloading logic properly.
+                // We'll use a simple fetch/fs logic here to avoid complicating signatures across the class
+                console.log('Downloading instance.zip from VPS...');
+                const vpsUrl = 'http://185.100.215.195/downloads/instance.zip';
+
+                const response = await fetch(vpsUrl);
+                if (response.ok) {
+                    const arrayBuffer = await response.arrayBuffer();
+                    fs.writeFileSync(oldZip, Buffer.from(arrayBuffer));
+                    console.log('instance.zip downloaded successfully.');
+                }
+            } catch (e) {
+                console.error('Failed to download instance.zip:', e);
+            }
+        }
+
         if (fs.existsSync(path.join(instanceDir, 'instance.cfg'))) {
             return instanceDir;
         }
@@ -278,7 +311,20 @@ export class GameHandler {
                         const legacyFabricRepo = 'https://repo.legacyfabric.net/repository/legacyfabric/';
 
                         // 0. Check for bundled libraries.zip and extract if needed
-                        const bundledLibsZip = path.resolve('libraries.zip');
+                        let bundledLibsZip = path.resolve('libraries.zip');
+
+                        // DOWNLOAD libraries.zip IF MISSING (VPS Support)
+                        if (!fs.existsSync(bundledLibsZip)) {
+                            console.log('libraries.zip not found locally. Attempting to download from VPS...');
+                            this.sendProgress(event.sender, 'Baixando bibliotecas do servidor...', 5);
+                            try {
+                                const vpsUrl = 'http://185.100.215.195/downloads/libraries.zip';
+                                await this.downloadFile(vpsUrl, path.dirname(bundledLibsZip), 'libraries.zip', event.sender);
+                            } catch (e) {
+                                console.error('Failed to download libraries.zip from VPS. Trying to proceed without it... (Might crash if offline)', e);
+                            }
+                        }
+
                         if (fs.existsSync(bundledLibsZip)) {
                             // Extract if we haven't marked it as extracted
                             const marker = path.join(librariesDir, '.bundled_extracted_v1');
@@ -488,4 +534,76 @@ export class GameHandler {
 
 
     // End of class (Removed unused methods: getVersionDetails, downloadLibraries, spawnGameProcess, old downloadFile)
+    private async handleUpdateCheck() {
+        try {
+            const instanceDir = path.join(app.getPath('userData'), 'instances', 'default');
+            const localVersionPath = path.join(instanceDir, 'local_version.txt');
+
+            // Default to version 0.0 if not found
+            let localVersion = '0.0';
+            if (fs.existsSync(localVersionPath)) {
+                localVersion = fs.readFileSync(localVersionPath, 'utf-8').trim();
+            }
+
+            const remoteUrl = 'http://185.100.215.195/downloads/version.json';
+            const response = await fetch(remoteUrl);
+            if (!response.ok) return { available: false, error: 'Failed to fetch version' };
+
+            const remoteData = await response.json() as any;
+
+            // Simple string comparison for now, assuming semantic versioning isn't strictly enforced
+            if (remoteData.version !== localVersion) {
+                return { available: true, version: remoteData.version, notes: remoteData.notes };
+            }
+            return { available: false };
+        } catch (e) {
+            console.error('Update check failed:', e);
+            return { available: false, error: String(e) };
+        }
+    }
+
+    private async handlePerformUpdate(event: IpcMainInvokeEvent) {
+        try {
+            this.sendProgress(event.sender, 'Iniciando atualização...', 0);
+            const remoteUrl = 'http://185.100.215.195/downloads/version.json';
+            const response = await fetch(remoteUrl);
+            const remoteData = await response.json() as any;
+
+            if (!remoteData.mods_url) throw new Error('No mods_url in version.json');
+
+            const instanceDir = path.join(app.getPath('userData'), 'instances', 'default');
+            const gameRoot = instanceDir;
+            const modsDir = path.join(gameRoot, '.minecraft', 'mods');
+
+            // 1. Download Update Zip
+            const tempUpdatePath = path.join(gameRoot, 'temp_update.zip');
+            await this.downloadFile(remoteData.mods_url, gameRoot, 'temp_update.zip', event.sender);
+
+            // 2. Clear OLD Mods (Safety first)
+            if (fs.existsSync(modsDir)) {
+                this.sendProgress(event.sender, 'Removendo mods antigos...', 40);
+                fs.rmSync(modsDir, { recursive: true, force: true });
+            }
+
+            // 3. Extract New
+            this.sendProgress(event.sender, 'Instalando novos mods...', 60);
+            const zip = new AdmZip(tempUpdatePath);
+            // Extract to .minecraft directory
+            zip.extractAllTo(path.join(gameRoot, '.minecraft'), true);
+
+            // 4. Update Local Version
+            fs.writeFileSync(path.join(instanceDir, 'local_version.txt'), remoteData.version);
+
+            // Cleanup
+            fs.unlinkSync(tempUpdatePath);
+
+            this.sendProgress(event.sender, 'Atualização concluída!', 100);
+            return { success: true };
+
+        } catch (e) {
+            console.error('Update failed:', e);
+            this.sendProgress(event.sender, `Erro na atualização: ${e}`, 0);
+            return { success: false, error: String(e) };
+        }
+    }
 }

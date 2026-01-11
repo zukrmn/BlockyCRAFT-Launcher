@@ -18,7 +18,7 @@ import_electron.contextBridge.exposeInMainWorld("electronAPI", {
   },
   // Invoke methods (request-response pattern)
   invoke: async (channel, data) => {
-    const validChannels = ["get-minecraft-path", "get-java-version", "launch-game", "check-custom-instance"];
+    const validChannels = ["get-minecraft-path", "get-java-version", "launch-game", "check-custom-instance", "check-update-status", "perform-update"];
     if (validChannels.includes(channel)) {
       return import_electron.ipcRenderer.invoke(channel, data);
     }

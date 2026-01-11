@@ -16,11 +16,25 @@
 
   const electron = (window as any).electronAPI as ElectronAPI;
 
+  let updateAvailable = $state(false);
+  let updateVersion = $state('');
+
   onMount(async () => {
     if (electron) {
       // Check for custom instance
       isCustomInstance = await electron.invoke('check-custom-instance', null);
       
+      // Check for Updates
+      try {
+          const updateStatus = await electron.invoke('check-update-status', null);
+          if (updateStatus && updateStatus.available) {
+              updateAvailable = true;
+              updateVersion = updateStatus.version;
+          }
+      } catch (e) {
+          console.error('Update check failed:', e);
+      }
+
       electron.receive('launch-progress', (data: any) => {
         launchStatus = data.status;
         launchProgress = data.progress;
@@ -30,12 +44,39 @@
              isLaunching = false;
              launchStatus = '';
              launchProgress = 0;
-           }, 5000);
+             // If we just finished an update, hide the button? Or reload? 
+             // Ideally we should reload the app or re-check.
+             if (launchStatus.includes('Atualização concluída')) {
+                 updateAvailable = false;
+                 alert('Atualização concluída com sucesso! Clique em JOGAR.');
+             }
+           }, 2000);
         }
       });
     }
   });
   
+  async function handleUpdate() {
+      if (isLaunching) return;
+      isLaunching = true;
+      launchStatus = 'Iniciando atualização...';
+      launchProgress = 0;
+      
+      try {
+          const result = await electron.invoke('perform-update', null);
+          if (!result || !result.success) {
+               isLaunching = false;
+               alert(`Erro na atualização: ${result?.error}`);
+          } else {
+              // Validated via progress events mostly
+              updateAvailable = false;
+          }
+      } catch (e) {
+          isLaunching = false;
+          alert(`Erro: ${e}`);
+      }
+  }
+
   async function handlePlay() {
     if (!username.trim()) {
       alert('Por favor, insira um nome de usuário!');
@@ -88,6 +129,12 @@
           ✨ Instance Customizada Detectada
         </div>
       {/if}
+      
+      {#if updateAvailable}
+         <button class="update-badge" onclick={handleUpdate} disabled={isLaunching}>
+            🚀 Atualização v{updateVersion} Disponível! (Clique para instalar)
+         </button>
+      {/if}
     </div>
 
     <div class="input-section">
@@ -107,7 +154,7 @@
       onclick={handlePlay}
       disabled={!username.trim() || isLaunching}
     >
-      {isLaunching ? 'CARREGANDO...' : 'JOGAR'}
+      {isLaunching ? (launchStatus.includes('atualização') ? 'ATUALIZANDO...' : 'CARREGANDO...') : 'JOGAR'}
     </button>
 
     {#if isLaunching}
@@ -190,6 +237,27 @@
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-5px); }
     to { opacity: 1; transform: translateY(0); }
+  }
+
+  .update-badge {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: none;
+    margin-top: 1rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+    transition: all 0.2s ease;
+    width: 100%;
+    animation: fadeIn 0.5s ease-out;
+  }
+
+  .update-badge:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4);
   }
 
   .input-section {

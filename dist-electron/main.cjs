@@ -2711,6 +2711,12 @@ var GameHandler = class {
       const instanceDir = import_path.default.join(import_electron.app.getPath("userData"), "instances", "default", "instance.cfg");
       return import_fs.default.existsSync(instanceZipPath) || import_fs.default.existsSync(instanceDir);
     });
+    import_electron.ipcMain.handle("check-update-status", async () => {
+      return this.handleUpdateCheck();
+    });
+    import_electron.ipcMain.handle("perform-update", async (event) => {
+      return this.handlePerformUpdate(event);
+    });
   }
   sendProgress(sender, status, progress) {
     sender.send("launch-progress", { status, progress });
@@ -2749,6 +2755,21 @@ var GameHandler = class {
       }
     }
     const oldZip = import_path.default.resolve("instance.zip");
+    if (!import_fs.default.existsSync(oldZip) && !import_fs.default.existsSync(import_path.default.join(instanceDir, "instance.cfg"))) {
+      console.log("instance.zip not found locally. Attempting to download from VPS...");
+      try {
+        console.log("Downloading instance.zip from VPS...");
+        const vpsUrl = "http://185.100.215.195/downloads/instance.zip";
+        const response = await fetch(vpsUrl);
+        if (response.ok) {
+          const arrayBuffer = await response.arrayBuffer();
+          import_fs.default.writeFileSync(oldZip, Buffer.from(arrayBuffer));
+          console.log("instance.zip downloaded successfully.");
+        }
+      } catch (e) {
+        console.error("Failed to download instance.zip:", e);
+      }
+    }
     if (import_fs.default.existsSync(import_path.default.join(instanceDir, "instance.cfg"))) {
       return instanceDir;
     }
@@ -2877,7 +2898,17 @@ var GameHandler = class {
             const fabricBase = "https://maven.fabricmc.net/";
             const mavenCentral = "https://repo1.maven.org/maven2/";
             const legacyFabricRepo = "https://repo.legacyfabric.net/repository/legacyfabric/";
-            const bundledLibsZip = import_path.default.resolve("libraries.zip");
+            let bundledLibsZip = import_path.default.resolve("libraries.zip");
+            if (!import_fs.default.existsSync(bundledLibsZip)) {
+              console.log("libraries.zip not found locally. Attempting to download from VPS...");
+              this.sendProgress(event.sender, "Baixando bibliotecas do servidor...", 5);
+              try {
+                const vpsUrl = "http://185.100.215.195/downloads/libraries.zip";
+                await this.downloadFile(vpsUrl, import_path.default.dirname(bundledLibsZip), "libraries.zip", event.sender);
+              } catch (e) {
+                console.error("Failed to download libraries.zip from VPS. Trying to proceed without it... (Might crash if offline)", e);
+              }
+            }
             if (import_fs.default.existsSync(bundledLibsZip)) {
               const marker = import_path.default.join(librariesDir, ".bundled_extracted_v1");
               if (!import_fs.default.existsSync(marker)) {
@@ -3019,6 +3050,56 @@ var GameHandler = class {
     }
   }
   // End of class (Removed unused methods: getVersionDetails, downloadLibraries, spawnGameProcess, old downloadFile)
+  async handleUpdateCheck() {
+    try {
+      const instanceDir = import_path.default.join(import_electron.app.getPath("userData"), "instances", "default");
+      const localVersionPath = import_path.default.join(instanceDir, "local_version.txt");
+      let localVersion = "0.0";
+      if (import_fs.default.existsSync(localVersionPath)) {
+        localVersion = import_fs.default.readFileSync(localVersionPath, "utf-8").trim();
+      }
+      const remoteUrl = "http://185.100.215.195/downloads/version.json";
+      const response = await fetch(remoteUrl);
+      if (!response.ok) return { available: false, error: "Failed to fetch version" };
+      const remoteData = await response.json();
+      if (remoteData.version !== localVersion) {
+        return { available: true, version: remoteData.version, notes: remoteData.notes };
+      }
+      return { available: false };
+    } catch (e) {
+      console.error("Update check failed:", e);
+      return { available: false, error: String(e) };
+    }
+  }
+  async handlePerformUpdate(event) {
+    try {
+      this.sendProgress(event.sender, "Iniciando atualiza\xE7\xE3o...", 0);
+      const remoteUrl = "http://185.100.215.195/downloads/version.json";
+      const response = await fetch(remoteUrl);
+      const remoteData = await response.json();
+      if (!remoteData.mods_url) throw new Error("No mods_url in version.json");
+      const instanceDir = import_path.default.join(import_electron.app.getPath("userData"), "instances", "default");
+      const gameRoot = instanceDir;
+      const modsDir = import_path.default.join(gameRoot, ".minecraft", "mods");
+      const tempUpdatePath = import_path.default.join(gameRoot, "temp_update.zip");
+      await this.downloadFile(remoteData.mods_url, gameRoot, "temp_update.zip", event.sender);
+      if (import_fs.default.existsSync(modsDir)) {
+        this.sendProgress(event.sender, "Removendo mods antigos...", 40);
+        import_fs.default.rmSync(modsDir, { recursive: true, force: true });
+      }
+      this.sendProgress(event.sender, "Instalando novos mods...", 60);
+      const zip = new import_adm_zip.default(tempUpdatePath);
+      zip.extractAllTo(import_path.default.join(gameRoot, ".minecraft"), true);
+      import_fs.default.writeFileSync(import_path.default.join(instanceDir, "local_version.txt"), remoteData.version);
+      import_fs.default.unlinkSync(tempUpdatePath);
+      this.sendProgress(event.sender, "Atualiza\xE7\xE3o conclu\xEDda!", 100);
+      return { success: true };
+    } catch (e) {
+      console.error("Update failed:", e);
+      this.sendProgress(event.sender, `Erro na atualiza\xE7\xE3o: ${e}`, 0);
+      return { success: false, error: String(e) };
+    }
+  }
 };
 
 // electron/main.ts
