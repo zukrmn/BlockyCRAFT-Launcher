@@ -1,43 +1,16 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-// Expose a safe API to the renderer process
-contextBridge.exposeInMainWorld('electronAPI', {
-  // Platform info
-  platform: process.platform,
-  
-  // IPC communication methods (for future Minecraft launcher features)
-  send: (channel: string, data: unknown) => {
-    const validChannels = ['launch-game', 'check-java', 'download-assets'];
-    if (validChannels.includes(channel)) {
-      ipcRenderer.send(channel, data);
-    }
+// Expose the API to the renderer process
+contextBridge.exposeInMainWorld('api', {
+  launchGame: (options: { username: string }) => ipcRenderer.send('launch-game', options),
+  onProgress: (callback: (data: { type: string; current: number; total: number }) => void) => {
+    // Strip event object and pass only data
+    ipcRenderer.on('download-progress', (_event, data) => callback(data));
   },
-  
-  receive: (channel: string, callback: (...args: unknown[]) => void) => {
-    const validChannels = ['game-launched', 'java-status', 'download-progress'];
-    if (validChannels.includes(channel)) {
-      ipcRenderer.on(channel, (_event, ...args) => callback(...args));
-    }
+  onLog: (callback: (data: string) => void) => {
+    ipcRenderer.on('log-message', (_event, data) => callback(data));
   },
-  
-  // Invoke methods (request-response pattern)
-  invoke: async (channel: string, data: unknown): Promise<unknown> => {
-    const validChannels = ['get-minecraft-path', 'get-java-version'];
-    if (validChannels.includes(channel)) {
-      return ipcRenderer.invoke(channel, data);
-    }
-    return null;
-  },
-});
-
-// Type declarations for the exposed API
-declare global {
-  interface Window {
-    electronAPI: {
-      platform: string;
-      send: (channel: string, data: unknown) => void;
-      receive: (channel: string, callback: (...args: unknown[]) => void) => void;
-      invoke: (channel: string, data: unknown) => Promise<unknown>;
-    };
+  onError: (callback: (err: string) => void) => {
+    ipcRenderer.on('launch-error', (_event, err) => callback(err));
   }
-}
+});

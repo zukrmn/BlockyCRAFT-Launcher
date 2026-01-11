@@ -1,8 +1,7 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 
 // Add command line switches before app is ready
-// These are needed for Docker/Container/Wayland environments
 app.commandLine.appendSwitch('no-sandbox');
 app.commandLine.appendSwitch('disable-gpu');
 app.commandLine.appendSwitch('disable-software-rasterizer');
@@ -10,17 +9,12 @@ app.commandLine.appendSwitch('disable-dev-shm-usage');
 
 console.log('=== BlockyCRAFT Launcher Starting ===');
 console.log('Electron version:', process.versions.electron);
-console.log('Node version:', process.versions.node);
-console.log('DISPLAY:', process.env['DISPLAY']);
-console.log('VITE_DEV_SERVER_URL:', process.env['VITE_DEV_SERVER_URL']);
 
 let mainWindow: BrowserWindow | null = null;
-
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL'];
 
 function createWindow(): void {
     console.log('Creating main window...');
-
     mainWindow = new BrowserWindow({
         width: 900,
         height: 600,
@@ -38,43 +32,25 @@ function createWindow(): void {
         show: true,
     });
 
-    console.log('Window created, loading content...');
-
     if (VITE_DEV_SERVER_URL) {
-        console.log('Loading from Vite dev server:', VITE_DEV_SERVER_URL);
         mainWindow.loadURL(VITE_DEV_SERVER_URL);
         mainWindow.webContents.openDevTools();
     } else {
         const filePath = path.join(__dirname, '../dist/index.html');
-        console.log('Loading from file:', filePath);
         mainWindow.loadFile(filePath);
     }
 
-    mainWindow.webContents.on('did-finish-load', () => {
-        console.log('Content loaded successfully!');
-    });
-
-    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
-        console.error('Failed to load:', errorCode, errorDescription);
-    });
-
     mainWindow.on('closed', () => {
-        console.log('Window closed');
         mainWindow = null;
     });
 }
 
-console.log('Waiting for app ready...');
-
 app.whenReady().then(() => {
-    console.log('App is ready!');
     createWindow();
-}).catch((err) => {
-    console.error('App ready failed:', err);
+    setupIPC();
 });
 
 app.on('window-all-closed', () => {
-    console.log('All windows closed');
     if (process.platform !== 'darwin') {
         app.quit();
     }
@@ -86,5 +62,48 @@ app.on('activate', () => {
     }
 });
 
-// Keep process running
-console.log('Main process initialized');
+function setupIPC() {
+    ipcMain.on('launch-game', (event, options) => {
+        console.log('[Main] Launch requested for:', options.username);
+
+        const sender = event.sender;
+        let progress = 0;
+
+        // Simulating Backend Process (Java Download, Assets, etc.)
+        const interval = setInterval(() => {
+            progress += 5;
+
+            // Send Progress Object
+            const totalSize = 100 * 1024 * 1024; // 100MB
+            const currentSize = (progress / 100) * totalSize;
+
+            sender.send('download-progress', {
+                type: 'download',
+                current: currentSize,
+                total: totalSize
+            });
+
+            // Send Logs
+            if (progress % 20 === 0) {
+                const logs = [
+                    'Downloading lwjgl.jar...',
+                    'Verifying assets index...',
+                    'Unpacking natives...',
+                    'Checking game hash...'
+                ];
+                const log = logs[Math.floor(Math.random() * logs.length)];
+                sender.send('log-message', `[Backend] ${log}`);
+            }
+
+            if (progress >= 100) {
+                clearInterval(interval);
+                sender.send('log-message', '[Backend] Launching java process...');
+                // In real app, we would spawn the child process here
+                setTimeout(() => {
+                    sender.send('game-launched');
+                }, 1000);
+            }
+        }, 200);
+    });
+}
+
