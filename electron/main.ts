@@ -8,7 +8,12 @@ app.commandLine.appendSwitch('disable-gpu');
 app.commandLine.appendSwitch('disable-software-rasterizer');
 app.commandLine.appendSwitch('disable-dev-shm-usage');
 
+import { GameHandler } from './handlers/GameHandler.js';
+const gameHandler = new GameHandler();
+gameHandler.init();
+
 console.log('=== BlockyCRAFT Launcher Starting ===');
+
 console.log('Electron version:', process.versions.electron);
 console.log('Node version:', process.versions.node);
 console.log('DISPLAY:', process.env['DISPLAY']);
@@ -36,14 +41,17 @@ function createWindow(): void {
         },
         backgroundColor: '#0f0f0f',
         show: true,
+        autoHideMenuBar: true, // Hide menu bar
     });
+
+    mainWindow.setMenu(null); // Explicitly remove menu
 
     console.log('Window created, loading content...');
 
     if (VITE_DEV_SERVER_URL) {
         console.log('Loading from Vite dev server:', VITE_DEV_SERVER_URL);
         mainWindow.loadURL(VITE_DEV_SERVER_URL);
-        mainWindow.webContents.openDevTools();
+        // DevTools removed as per user request
     } else {
         const filePath = path.join(__dirname, '../dist/index.html');
         console.log('Loading from file:', filePath);

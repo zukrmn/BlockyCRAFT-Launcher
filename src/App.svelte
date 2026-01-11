@@ -1,13 +1,78 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+
   let username = $state('');
+  let isLaunching = $state(false);
+  let launchStatus = $state('');
+  let launchProgress = $state(0);
+  let isCustomInstance = $state(false);
   
-  function handlePlay() {
+  // Interface for Electron API
+  interface ElectronAPI {
+    send: (channel: string, data: any) => void;
+    receive: (channel: string, callback: (...args: any[]) => void) => void;
+    invoke: (channel: string, data: any) => Promise<any>;
+  }
+
+  const electron = (window as any).electronAPI as ElectronAPI;
+
+  onMount(async () => {
+    if (electron) {
+      // Check for custom instance
+      isCustomInstance = await electron.invoke('check-custom-instance', null);
+      
+      electron.receive('launch-progress', (data: any) => {
+        launchStatus = data.status;
+        launchProgress = data.progress;
+        
+        if (data.progress === 100) {
+           setTimeout(() => {
+             isLaunching = false;
+             launchStatus = '';
+             launchProgress = 0;
+           }, 5000);
+        }
+      });
+    }
+  });
+  
+  async function handlePlay() {
     if (!username.trim()) {
       alert('Por favor, insira um nome de usuário!');
       return;
     }
+    
+    if (isLaunching) return;
+
+    isLaunching = true;
+    launchStatus = 'Iniciando...';
+    launchProgress = 0;
+    
     console.log('Launching game for:', username);
-    // Future: window.electronAPI.send('launch-game', { username });
+    
+    if (electron) {
+      // Use invoke to get result waiting
+      const result = await electron.invoke('launch-game', { username });
+      // Note: We used ipcMain.handle, so use invoke.
+      if (!result || !result.success) {
+         isLaunching = false;
+         console.error('Launch Result Error:', result);
+         alert(`Erro ao iniciar: ${result?.error || 'Desconhecido'}\n\nDetalhes: ${result?.stack || ''}`);
+      }
+    } else {
+      // Mock for browser dev
+      let p = 0;
+      const interval = setInterval(() => {
+        p += 10;
+        launchProgress = p;
+        launchStatus = `Baixando arquivos... ${p}%`;
+        if (p >= 100) {
+          clearInterval(interval);
+          launchStatus = 'Pronto (Modo Demo Browser)';
+          setTimeout(() => isLaunching = false, 2000);
+        }
+      }, 500);
+    }
   }
 </script>
 
@@ -18,6 +83,11 @@
         <span class="logo-blocky">Blocky</span><span class="logo-craft">CRAFT</span>
       </h1>
       <p class="version-text">Minecraft Beta 1.7.3</p>
+      {#if isCustomInstance}
+        <div class="custom-badge">
+          ✨ Instance Customizada Detectada
+        </div>
+      {/if}
     </div>
 
     <div class="input-section">
@@ -35,10 +105,19 @@
     <button 
       class="play-button"
       onclick={handlePlay}
-      disabled={!username.trim()}
+      disabled={!username.trim() || isLaunching}
     >
-      JOGAR
+      {isLaunching ? 'CARREGANDO...' : 'JOGAR'}
     </button>
+
+    {#if isLaunching}
+      <div class="progress-section">
+        <div class="progress-bar">
+          <div class="progress-fill" style="width: {launchProgress}%"></div>
+        </div>
+        <p class="status-text">{launchStatus}</p>
+      </div>
+    {/if}
 
     <p class="footer-text">
       Feito com ❤️ para a comunidade
@@ -93,9 +172,24 @@
   }
 
   .version-text {
-    color: #6b7280;
-    font-size: 0.875rem;
-    font-weight: 500;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+  }
+
+  .custom-badge {
+    background: rgba(255, 215, 0, 0.15);
+    color: #ffd700;
+    font-size: 0.8rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    margin-top: 0.5rem;
+    animation: fadeIn 0.5s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   .input-section {
@@ -162,5 +256,31 @@
     text-align: center;
     font-size: 0.75rem;
     color: #525252;
+  }
+
+  .progress-section {
+    width: 100%;
+    margin-top: -1rem;
+    text-align: center;
+  }
+
+  .progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: #10b981;
+    transition: width 0.3s ease;
+  }
+
+  .status-text {
+    font-size: 0.75rem;
+    color: #a3a3a3;
   }
 </style>
