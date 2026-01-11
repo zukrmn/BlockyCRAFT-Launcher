@@ -57,7 +57,6 @@ const args = [
   projectRoot,
   '--no-sandbox',
   '--disable-gpu',
-  '--ozone-platform=wayland',  // Use Wayland instead of X11
 ];
 
 // Add any extra args passed to this script
