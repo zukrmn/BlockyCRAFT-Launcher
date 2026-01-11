@@ -43,12 +43,36 @@ function createWindow(): void {
     console.log('Window created, loading content...');
 
     if (VITE_DEV_SERVER_URL) {
-        mainWindow.loadURL(VITE_DEV_SERVER_URL);
-        // DevTools removed as per user request
+        console.log('Loading URL:', VITE_DEV_SERVER_URL);
+        mainWindow.loadURL(VITE_DEV_SERVER_URL).catch(e => console.error('Failed to load URL:', e));
+        mainWindow.webContents.openDevTools();
     } else {
         const filePath = path.join(__dirname, '../dist/index.html');
-        mainWindow.loadFile(filePath);
+        console.log('Loading File:', filePath);
+        mainWindow.loadFile(filePath).catch(e => console.error('Failed to load file:', e));
     }
+
+    mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+        console.log(`[Renderer] ${message} (${sourceId}:${line})`);
+    });
+
+    mainWindow.webContents.on('did-finish-load', () => {
+        console.log('Create Window: did-finish-load');
+    });
+
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+        console.error('Create Window: did-fail-load', errorCode, errorDescription, validatedURL);
+    });
+
+    mainWindow.webContents.on('render-process-gone', (event, details) => {
+        console.error('Create Window: render-process-gone', details);
+    });
+
+
+
+    mainWindow.webContents.on('unresponsive', () => {
+        console.error('Create Window: unresponsive');
+    });
 
     mainWindow.on('closed', () => {
         mainWindow = null;
