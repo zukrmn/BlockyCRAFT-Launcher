@@ -43,18 +43,11 @@ function createWindow(): void {
     console.log('Window created, loading content...');
 
     if (VITE_DEV_SERVER_URL) {
-        console.log('Loading URL:', VITE_DEV_SERVER_URL);
-        mainWindow.loadURL(VITE_DEV_SERVER_URL).catch(e => console.error('Failed to load URL:', e));
-        mainWindow.webContents.openDevTools();
+        mainWindow.loadURL(VITE_DEV_SERVER_URL);
     } else {
         const filePath = path.join(__dirname, '../dist/index.html');
-        console.log('Loading File:', filePath);
-        mainWindow.loadFile(filePath).catch(e => console.error('Failed to load file:', e));
+        mainWindow.loadFile(filePath);
     }
-
-    mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
-        console.log(`[Renderer] ${message} (${sourceId}:${line})`);
-    });
 
     mainWindow.webContents.on('did-finish-load', () => {
         console.log('Create Window: did-finish-load');

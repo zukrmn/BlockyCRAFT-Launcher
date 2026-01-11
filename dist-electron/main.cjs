@@ -3028,6 +3028,7 @@ var GameHandler = class {
         launchArgs.push("--assetIndex", "truly_legacy");
       }
       launchArgs.push("--server", "185.100.215.195");
+      launchArgs.push("--port", "25565");
       console.log("Spawning java:", this.javaPath);
       console.log("Args:", launchArgs);
       const gameProcess = (0, import_child_process.spawn)(this.javaPath, launchArgs, {
@@ -3137,17 +3138,11 @@ function createWindow() {
   mainWindow.setMenu(null);
   console.log("Window created, loading content...");
   if (VITE_DEV_SERVER_URL) {
-    console.log("Loading URL:", VITE_DEV_SERVER_URL);
-    mainWindow.loadURL(VITE_DEV_SERVER_URL).catch((e) => console.error("Failed to load URL:", e));
-    mainWindow.webContents.openDevTools();
+    mainWindow.loadURL(VITE_DEV_SERVER_URL);
   } else {
     const filePath = import_node_path.default.join(__dirname, "../dist/index.html");
-    console.log("Loading File:", filePath);
-    mainWindow.loadFile(filePath).catch((e) => console.error("Failed to load file:", e));
+    mainWindow.loadFile(filePath);
   }
-  mainWindow.webContents.on("console-message", (event, level, message, line, sourceId) => {
-    console.log(`[Renderer] ${message} (${sourceId}:${line})`);
-  });
   mainWindow.webContents.on("did-finish-load", () => {
     console.log("Create Window: did-finish-load");
   });

@@ -33,4 +33,5 @@ gamedata/
 instances/
 temp_natives/
 temp_extract/
-core/
+core
+
