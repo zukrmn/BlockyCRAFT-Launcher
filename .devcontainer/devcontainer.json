@@ -1,11 +1,11 @@
 {
     "name": "BlockyCRAFT Launcher Dev",
-    "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
     
-    // Instala bibliotecas do Linux necessárias para o Electron rodar (GUI, Audio, etc)
-    "onCreateCommand": "sudo apt-get update && sudo apt-get install -y libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libgbm1 libasound2 libpangocairo-1.0-0 libxss1 libgtk-3-0 libxshmfence1 libglu1-mesa libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libpango-1.0-0 libcairo2 libatspi2.0-0 libxcb-dri3-0 libx11-xcb1",
-    // Instala dependências do projeto após o container subir
-    "postCreateCommand": "npm install",
+    // Instala dependências npm e configura permissões X11
+    "postCreateCommand": "npm install && sudo chmod -R 777 /tmp/.X11-unix 2>/dev/null || true",
     
     "customizations": {
         "vscode": {
@@ -20,36 +20,30 @@
             }
         }
     },
-    // Configurações para rodar GUI (Electron) de dentro do Docker no Linux (Wayland + XWayland)
+    // Mounts para X11 e Wayland (baseado no devcontainer que funciona)
+    "mounts": [
+        "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind",
+        "source=${localEnv:XDG_RUNTIME_DIR},target=/tmp/xdg-runtime,type=bind"
+    ],
+    // Configurações de rede e segurança
     "runArgs": [
         "--net=host",
         "--ipc=host",
-        // X11/XWayland socket (para apps X11 no Wayland via XWayland)
-        "-v",
-        "/tmp/.X11-unix:/tmp/.X11-unix:rw",
-        // Wayland socket (para apps nativas Wayland)
-        "-v",
-        "${localEnv:XDG_RUNTIME_DIR}/${localEnv:WAYLAND_DISPLAY}:/tmp/${localEnv:WAYLAND_DISPLAY}:rw",
-        // Variáveis de ambiente para display
-        "-e",
-        "DISPLAY=${localEnv:DISPLAY}",
-        "-e",
-        "WAYLAND_DISPLAY=${localEnv:WAYLAND_DISPLAY}",
-        "-e",
-        "XDG_RUNTIME_DIR=/tmp",
-        // Segurança (necessário para Chrome/Electron sandbox)
         "--security-opt",
         "seccomp=unconfined",
-        // Acesso à GPU para renderização
-        "--device",
-        "/dev/dri:/dev/dri"
+        "--device=/dev/dri:/dev/dri",
+        "--device=/dev/snd:/dev/snd",
+        "--device=/dev/input:/dev/input"
     ],
-    // Variáveis de ambiente para Electron no container
+    // Variáveis de ambiente para X11, Wayland, Electron e Java GUI
     "containerEnv": {
+        "DISPLAY": ":0",
+        "WAYLAND_DISPLAY": "wayland-0",
+        "XDG_RUNTIME_DIR": "/tmp/xdg-runtime",
         "ELECTRON_DISABLE_SANDBOX": "1",
-        "ELECTRON_ENABLE_LOGGING": "1",
-        "ELECTRON_NO_ATTACH_CONSOLE": "1"
+        "ELECTRON_ENABLE_LOGGING": "1"
     },
+    
     // Expõe a porta do Vite/Svelte (HMR)
     "forwardPorts": [
         4321

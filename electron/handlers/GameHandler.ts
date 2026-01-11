@@ -519,7 +519,8 @@ export class GameHandler {
             console.log('Args:', launchArgs);
 
             const gameProcess = spawn(this.javaPath, launchArgs, {
-                cwd: dotMinecraft
+                cwd: dotMinecraft,
+                env: process.env
             });
 
             gameProcess.stdout.on('data', (data) => {

@@ -3296,7 +3296,8 @@ var GameHandler = class {
       console.log("Spawning java:", this.javaPath);
       console.log("Args:", launchArgs);
       const gameProcess = (0, import_child_process2.spawn)(this.javaPath, launchArgs, {
-        cwd: dotMinecraft
+        cwd: dotMinecraft,
+        env: process.env
       });
       gameProcess.stdout.on("data", (data) => {
         console.log(`[MC]: ${data}`);
