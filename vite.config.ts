@@ -11,6 +11,7 @@ export default defineConfig({
     emptyOutDir: true,
   },
   resolve: {
+    conditions: ['browser'],
     alias: {
       '@': resolve(__dirname, './src'),
     },

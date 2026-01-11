@@ -1,354 +1,246 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount } from "svelte";
+  import { ElectronService } from "./lib/electron";
+  import Button from "./lib/components/Button.svelte";
+  import TextInput from "./lib/components/TextInput.svelte";
+  import ProgressBar from "./lib/components/ProgressBar.svelte";
 
-  let username = $state('');
+  // State using Svelte 5 runes
+  let username = $state("");
   let isLaunching = $state(false);
-  let launchStatus = $state('');
+  let launchStatus = $state("");
   let launchProgress = $state(0);
   let isCustomInstance = $state(false);
-  
-  // Interface for Electron API
-  interface ElectronAPI {
-    send: (channel: string, data: any) => void;
-    receive: (channel: string, callback: (...args: any[]) => void) => void;
-    invoke: (channel: string, data: any) => Promise<any>;
-  }
-
-  const electron = (window as any).electronAPI as ElectronAPI;
-
   let updateAvailable = $state(false);
-  let updateVersion = $state('');
+  let updateVersion = $state("");
 
   onMount(async () => {
-    if (electron) {
-      // Check for custom instance
-      isCustomInstance = await electron.invoke('check-custom-instance', null);
-      
-      // Check for Updates
-      try {
-          const updateStatus = await electron.invoke('check-update-status', null);
-          if (updateStatus && updateStatus.available) {
-              updateAvailable = true;
-              updateVersion = updateStatus.version;
-          }
-      } catch (e) {
-          console.error('Update check failed:', e);
-      }
+    isCustomInstance = await ElectronService.checkCustomInstance();
+    const update = await ElectronService.checkForUpdates();
+    if (update.available) {
+      updateAvailable = true;
+      updateVersion = update.version || "";
+    }
 
-      electron.receive('launch-progress', (data: any) => {
-        launchStatus = data.status;
-        launchProgress = data.progress;
-        
-        if (data.progress === 100) {
-           setTimeout(() => {
-             isLaunching = false;
-             launchStatus = '';
-             launchProgress = 0;
-             // If we just finished an update, hide the button? Or reload? 
-             // Ideally we should reload the app or re-check.
-             if (launchStatus.includes('Atualização concluída')) {
-                 updateAvailable = false;
-                 alert('Atualização concluída com sucesso! Clique em JOGAR.');
-             }
-           }, 2000);
-        }
-      });
+    ElectronService.onProgress((status, progress) => {
+      launchStatus = status;
+      launchProgress = progress;
+      if (progress === 100) {
+        setTimeout(() => {
+          isLaunching = false;
+        }, 1500);
+      }
+    });
+
+    // Load saved username if any (could integrate localstorage later)
+    if (localStorage.getItem("username")) {
+      username = localStorage.getItem("username") || "";
     }
   });
-  
-  async function handleUpdate() {
-      if (isLaunching) return;
-      isLaunching = true;
-      launchStatus = 'Iniciando atualização...';
-      launchProgress = 0;
-      
-      try {
-          const result = await electron.invoke('perform-update', null);
-          if (!result || !result.success) {
-               isLaunching = false;
-               alert(`Erro na atualização: ${result?.error}`);
-          } else {
-              // Validated via progress events mostly
-              updateAvailable = false;
-          }
-      } catch (e) {
-          isLaunching = false;
-          alert(`Erro: ${e}`);
-      }
-  }
 
-  async function handlePlay() {
-    if (!username.trim()) {
-      alert('Por favor, insira um nome de usuário!');
-      return;
-    }
-    
-    if (isLaunching) return;
+  async function handleLaunch() {
+    if (!username.trim()) return;
+    localStorage.setItem("username", username);
 
     isLaunching = true;
-    launchStatus = 'Iniciando...';
+    launchStatus = "Iniciando...";
     launchProgress = 0;
-    
-    console.log('Launching game for:', username);
-    
-    if (electron) {
-      // Use invoke to get result waiting
-      const result = await electron.invoke('launch-game', { username });
-      // Note: We used ipcMain.handle, so use invoke.
-      if (!result || !result.success) {
-         isLaunching = false;
-         console.error('Launch Result Error:', result);
-         alert(`Erro ao iniciar: ${result?.error || 'Desconhecido'}\n\nDetalhes: ${result?.stack || ''}`);
-      }
+
+    const result = await ElectronService.launchGame(username);
+    if (!result.success) {
+      isLaunching = false;
+      alert("Erro ao iniciar: " + result.error);
+    }
+  }
+
+  async function handleUpdate() {
+    isLaunching = true;
+    launchStatus = "Atualizando...";
+    const result = await ElectronService.performUpdate();
+    if (result.success) {
+      updateAvailable = false;
+      alert("Atualizado com sucesso! Reinicie se necerrário.");
     } else {
-      // Mock for browser dev
-      let p = 0;
-      const interval = setInterval(() => {
-        p += 10;
-        launchProgress = p;
-        launchStatus = `Baixando arquivos... ${p}%`;
-        if (p >= 100) {
-          clearInterval(interval);
-          launchStatus = 'Pronto (Modo Demo Browser)';
-          setTimeout(() => isLaunching = false, 2000);
-        }
-      }, 500);
+      alert("Falha na atualização.");
+      isLaunching = false;
     }
   }
 </script>
 
-<main class="launcher">
-  <div class="launcher-card">
-    <div class="logo-section">
-      <h1 class="logo-text">
-        <span class="logo-blocky">Blocky</span><span class="logo-craft">CRAFT</span>
-      </h1>
-      <p class="version-text">Minecraft Beta 1.7.3</p>
-      {#if isCustomInstance}
-        <div class="custom-badge">
-          ✨ Instance Customizada Detectada
-        </div>
-      {/if}
-      
-      {#if updateAvailable}
-         <button class="update-badge" onclick={handleUpdate} disabled={isLaunching}>
-            🚀 Atualização v{updateVersion} Disponível! (Clique para instalar)
-         </button>
-      {/if}
-    </div>
-
-    <div class="input-section">
-      <label for="username" class="input-label">Nome de Usuário</label>
-      <input
-        type="text"
-        id="username"
-        bind:value={username}
-        placeholder="Digite seu username..."
-        class="username-input"
-        maxlength="16"
-      />
-    </div>
-
-    <button 
-      class="play-button"
-      onclick={handlePlay}
-      disabled={!username.trim() || isLaunching}
-    >
-      {isLaunching ? (launchStatus.includes('atualização') ? 'ATUALIZANDO...' : 'CARREGANDO...') : 'JOGAR'}
-    </button>
-
-    {#if isLaunching}
-      <div class="progress-section">
-        <div class="progress-bar">
-          <div class="progress-fill" style="width: {launchProgress}%"></div>
-        </div>
-        <p class="status-text">{launchStatus}</p>
+<main class="app-container">
+  <div class="glass-card">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <span class="blocky">Blocky</span><span class="craft">CRAFT</span>
       </div>
-    {/if}
+      <div class="subtitle">Beta 1.7.3 Edition</div>
 
-    <p class="footer-text">
-      Feito com ❤️ para a comunidade
-    </p>
+      {#if isCustomInstance}
+        <div class="badge">✨ Custom Instance</div>
+      {/if}
+    </header>
+
+    <!-- Content -->
+    <div class="content">
+      {#if updateAvailable}
+        <div class="update-banner">
+          <p>Nova versão <strong>{updateVersion}</strong> disponível!</p>
+          <Button
+            variant="secondary"
+            onclick={handleUpdate}
+            disabled={isLaunching}
+          >
+            Atualizar Agora
+          </Button>
+        </div>
+      {/if}
+
+      <div class="form-group">
+        <TextInput
+          bind:value={username}
+          label="Nome de Usuário"
+          placeholder="Ex: Steve"
+          type="text"
+          onkeypress={(e) => e.key === "Enter" && handleLaunch()}
+        />
+      </div>
+
+      {#if isLaunching}
+        <div class="progress-area">
+          <ProgressBar progress={launchProgress} status={launchStatus} />
+        </div>
+      {:else}
+        <Button
+          variant="primary"
+          class="play-btn"
+          onclick={handleLaunch}
+          disabled={!username.trim()}
+        >
+          JOGAR
+        </Button>
+      {/if}
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>Desenvolvido com ❤️ pela comunidade</p>
+      {#if updateVersion}
+        <p class="version">v{updateVersion}</p>
+      {/if}
+    </footer>
   </div>
 </main>
 
 <style>
-  .launcher {
-    width: 100%;
-    height: 100%;
+  .app-container {
+    width: 100vw;
+    height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%);
     padding: 1rem;
+    overflow: hidden;
   }
 
-  .launcher-card {
-    background: rgba(15, 15, 15, 0.9);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
-    padding: 3rem 2.5rem;
+  .glass-card {
     width: 100%;
-    max-width: 400px;
+    max-width: 420px;
+    background: var(--bg-glass);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-glass);
+    padding: 3rem 2.5rem;
     display: flex;
     flex-direction: column;
-    gap: 2rem;
-    box-shadow: 
-      0 25px 50px -12px rgba(0, 0, 0, 0.5),
-      0 0 0 1px rgba(255, 255, 255, 0.05);
+    gap: 2.5rem;
+    animation: slideUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
-  .logo-section {
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .header {
     text-align: center;
   }
 
-  .logo-text {
+  .logo {
     font-size: 2.5rem;
     font-weight: 800;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.04em;
+    line-height: 1;
     margin-bottom: 0.5rem;
   }
 
-  .logo-blocky {
-    color: #10b981;
+  .blocky {
+    color: var(--color-emerald);
+  }
+  .craft {
+    color: white;
   }
 
-  .logo-craft {
-    color: #ffffff;
-  }
-
-  .version-text {
-    color: rgba(255, 255, 255, 0.6);
+  .subtitle {
+    color: var(--color-text-secondary);
     font-size: 0.9rem;
+    font-weight: 500;
   }
 
-  .custom-badge {
-    background: rgba(255, 215, 0, 0.15);
+  .badge {
+    display: inline-block;
+    background: rgba(255, 215, 0, 0.1);
     color: #ffd700;
-    font-size: 0.8rem;
-    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    padding: 4px 12px;
     border-radius: 20px;
-    border: 1px solid rgba(255, 215, 0, 0.3);
-    margin-top: 0.5rem;
-    animation: fadeIn 0.5s ease-out;
-  }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .update-badge {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    color: #ffffff;
-    font-size: 0.9rem;
-    font-weight: 700;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    border: none;
     margin-top: 1rem;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-    transition: all 0.2s ease;
-    width: 100%;
-    animation: fadeIn 0.5s ease-out;
+    border: 1px solid rgba(255, 215, 0, 0.2);
   }
 
-  .update-badge:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4);
+  .content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
   }
 
-  .input-section {
+  .update-banner {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    text-align: center;
+    font-size: 0.9rem;
+    color: #ffd700;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
   }
 
-  .input-label {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #a3a3a3;
-  }
-
-  .username-input {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    padding: 1rem 1.25rem;
-    font-size: 1rem;
-    color: #ffffff;
-    outline: none;
-    transition: all 0.2s ease;
-  }
-
-  .username-input::placeholder {
-    color: #525252;
-  }
-
-  .username-input:focus {
-    border-color: #10b981;
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
-  }
-
-  .play-button {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    border: none;
-    border-radius: 10px;
-    padding: 1rem 2rem;
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: #ffffff;
-    cursor: pointer;
-    transition: all 0.2s ease;
+  :global(.play-btn) {
+    width: 100%;
+    height: 3.5rem;
+    font-size: 1.1rem;
     letter-spacing: 0.05em;
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
   }
 
-  .play-button:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-  }
-
-  .play-button:active:not(:disabled) {
-    transform: translateY(0);
-  }
-
-  .play-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .footer-text {
+  .footer {
     text-align: center;
     font-size: 0.75rem;
-    color: #525252;
+    color: var(--color-text-muted);
+    margin-top: auto;
   }
 
-  .progress-section {
-    width: 100%;
-    margin-top: -1rem;
-    text-align: center;
-  }
-
-  .progress-bar {
-    width: 100%;
-    height: 6px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
-    overflow: hidden;
-    margin-bottom: 0.5rem;
-  }
-
-  .progress-fill {
-    height: 100%;
-    background: #10b981;
-    transition: width 0.3s ease;
-  }
-
-  .status-text {
-    font-size: 0.75rem;
-    color: #a3a3a3;
+  .progress-area {
+    min-height: 3.5rem; /* Reserve space to match button height */
+    display: flex;
+    align-items: center;
   }
 </style>
