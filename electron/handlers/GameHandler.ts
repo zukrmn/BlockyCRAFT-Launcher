@@ -5,6 +5,7 @@ import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
 import AdmZip from 'adm-zip';
 import { createWriteStream } from 'fs';
+import { JavaManager } from './JavaManager.js';
 
 const execAsync = promisify(exec);
 
@@ -21,10 +22,12 @@ interface GameOptions {
 export class GameHandler {
     private gamePath: string;
     private javaPath: string;
+    private javaManager: JavaManager;
 
     constructor() {
         this.gamePath = path.join(app.getPath('userData'), 'gamedata');
-        this.javaPath = 'java'; // Default to system java
+        this.javaPath = 'java'; // Will be set by JavaManager
+        this.javaManager = new JavaManager();
     }
 
     public init() {
@@ -223,13 +226,16 @@ export class GameHandler {
             // 2a. Download Vanilla Assets (Required for both)
             if (!options.username) throw new Error('Username required');
 
-            // Check Java
-            if (options.javaPath) this.javaPath = options.javaPath;
-            const javaOk = await this.checkJava(this.javaPath);
-            if (!javaOk) throw new Error('Java not found. Please install Java 8.');
+            // Ensure Java is available (auto-download if needed)
+            this.sendProgress(event.sender, 'Verificando Java...', 5);
+            try {
+                this.javaPath = options.javaPath || await this.javaManager.ensureJava(event.sender);
+            } catch (e: any) {
+                throw new Error('Falha ao configurar Java: ' + e.message);
+            }
 
             // Fetch Manifest (Vanilla)
-            this.sendProgress(event.sender, 'Verificando versão...', 10);
+            this.sendProgress(event.sender, 'Verificando versão...', 65);
             const manifestRes = await fetch(VERSION_MANIFEST_URL);
             const manifest = await manifestRes.json() as any;
             const versionData = manifest.versions.find((v: any) => v.id === TARGET_VERSION_ID);
@@ -247,7 +253,7 @@ export class GameHandler {
             // For b1.7.3, they are often in the version json libraries with "natives" classifier.
             // We will try to find and download them.
             if (!isCustomInstance) {
-                this.sendProgress(event.sender, 'Baixando bibliotecas...', 30);
+                this.sendProgress(event.sender, 'Baixando bibliotecas...', 70);
 
                 // Iterate libraries for natives
                 for (const lib of versionDetails.libraries) {
@@ -279,7 +285,7 @@ export class GameHandler {
                     const fabricComponent = mmcPack.components.find((c: any) => c.uid === 'net.fabricmc.fabric-loader');
 
                     if (fabricComponent) {
-                        this.sendProgress(event.sender, 'Configurando Fabric/StationAPI...', 50);
+                        this.sendProgress(event.sender, 'Configurando Fabric/StationAPI...', 75);
 
                         const fabricLibs = [
                             { name: 'asm:9.7.1', group: 'org.ow2.asm', artifact: 'asm', version: '9.7.1' },
@@ -316,7 +322,7 @@ export class GameHandler {
                         // DOWNLOAD libraries.zip IF MISSING (VPS Support)
                         if (!fs.existsSync(bundledLibsZip)) {
                             console.log('libraries.zip not found locally. Attempting to download from VPS...');
-                            this.sendProgress(event.sender, 'Baixando bibliotecas do servidor...', 5);
+                            this.sendProgress(event.sender, 'Baixando bibliotecas do servidor...', 68);
                             try {
                                 const vpsUrl = 'http://185.100.215.195/downloads/libraries.zip';
                                 await this.downloadFile(vpsUrl, path.dirname(bundledLibsZip), 'libraries.zip', event.sender);
@@ -329,7 +335,7 @@ export class GameHandler {
                             // Extract if we haven't marked it as extracted
                             const marker = path.join(librariesDir, '.bundled_extracted_v1');
                             if (!fs.existsSync(marker)) {
-                                this.sendProgress(event.sender, 'Extraindo bibliotecas locais (libraries.zip)...', 40);
+                                this.sendProgress(event.sender, 'Extraindo bibliotecas locais (libraries.zip)...', 72);
                                 console.log('Found libraries.zip, extracting...');
                                 try {
                                     if (!fs.existsSync(librariesDir)) fs.mkdirSync(librariesDir, { recursive: true });
@@ -386,7 +392,7 @@ export class GameHandler {
                         }
 
                         // Download Legacy Fabric Natives (Crucial for LWJGL 2.9.4+legacyfabric.9)
-                        this.sendProgress(event.sender, 'Baixando nativos (Legacy Fabric)...', 60);
+                        this.sendProgress(event.sender, 'Baixando nativos (Legacy Fabric)...', 78);
                         const nativesList = [
                             { group: 'org.lwjgl.lwjgl', artifact: 'lwjgl-platform', version: '2.9.4+legacyfabric.9', classifier: 'natives-linux' },
                             { group: 'net.java.jinput', artifact: 'jinput-platform', version: '2.0.5', classifier: 'natives-linux' }
@@ -480,7 +486,7 @@ export class GameHandler {
             }
 
             // 3. Launch
-            this.sendProgress(event.sender, 'Iniciando Jogo...', 90);
+            this.sendProgress(event.sender, 'Iniciando Jogo...', 95);
 
             const launchArgs = [
                 '-Djava.library.path=' + nativesDir,

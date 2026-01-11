@@ -3,7 +3,7 @@
     "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
     
     // Instala bibliotecas do Linux necessárias para o Electron rodar (GUI, Audio, etc)
-    "onCreateCommand": "sudo apt-get update && sudo apt-get install -y libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libgbm1 libasound2 libpangocairo-1.0-0 libxss1 libgtk-3-0 libxshmfence1 libglu1-mesa libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libpango-1.0-0 libcairo2",
+    "onCreateCommand": "sudo apt-get update && sudo apt-get install -y libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libgbm1 libasound2 libpangocairo-1.0-0 libxss1 libgtk-3-0 libxshmfence1 libglu1-mesa libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libpango-1.0-0 libcairo2 libatspi2.0-0 libxcb-dri3-0 libx11-xcb1",
     // Instala dependências do projeto após o container subir
     "postCreateCommand": "npm install",
     
@@ -42,21 +42,17 @@
         "seccomp=unconfined",
         // Acesso à GPU para renderização
         "--device",
-        "/dev/dri:/dev/dri",
-        // D-Bus para integração com o sistema
-        "-v",
-        "/run/dbus:/run/dbus:ro",
-        "-e",
-        "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket"
+        "/dev/dri:/dev/dri"
     ],
     // Variáveis de ambiente para Electron no container
     "containerEnv": {
         "ELECTRON_DISABLE_SANDBOX": "1",
-        "ELECTRON_ENABLE_LOGGING": "1"
+        "ELECTRON_ENABLE_LOGGING": "1",
+        "ELECTRON_NO_ATTACH_CONSOLE": "1"
     },
     // Expõe a porta do Vite/Svelte (HMR)
     "forwardPorts": [
-        3000
+        4321
     ],
     
     // Usuário padrão do container (node)
