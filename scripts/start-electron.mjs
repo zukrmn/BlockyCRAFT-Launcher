@@ -1,25 +1,22 @@
 #!/usr/bin/env node
 // Startup script that launches Electron using the binary path directly
-// AND temporarily removes the npm electron module to allow Electron's
-// built-in 'electron' module to be resolved instead
+// AND temporarily renames node_modules/electron to prevent Node from
+// resolving require('electron') to the npm package, allowing Electron's
+// built-in module to be used instead.
 
 import { spawn } from 'child_process';
 import { dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
-import { readFileSync, existsSync, renameSync, writeFileSync } from 'fs';
+import { readFileSync, existsSync, renameSync } from 'fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(__dirname, '..');
 
 // Paths for the npm electron module
 const electronPkgPath = join(projectRoot, 'node_modules', 'electron');
-const indexJsPath = join(electronPkgPath, 'index.js');
-const indexJsBackupPath = join(electronPkgPath, 'index.js.disabled');
-const pkgJsonPath = join(electronPkgPath, 'package.json');
+const electronBackupPath = join(projectRoot, 'node_modules', '.electron-npm');
 
-let originalPkgJson = null;
-
-// Get the electron binary path from the npm package
+// Get the electron binary path from the npm package (before renaming)
 function getElectronPath() {
   const pathFile = join(electronPkgPath, 'path.txt');
 
@@ -32,62 +29,65 @@ function getElectronPath() {
   return join(electronPkgPath, 'dist', 'electron');
 }
 
-// Temporarily disable the npm electron module
-function disableNpmElectron() {
-  // Rename index.js
-  if (existsSync(indexJsPath)) {
-    renameSync(indexJsPath, indexJsBackupPath);
-  }
+// Get absolute path to electron binary BEFORE renaming
+const electronBinaryPath = getElectronPath();
 
-  // Remove main from package.json
-  if (existsSync(pkgJsonPath)) {
-    originalPkgJson = readFileSync(pkgJsonPath, 'utf-8');
-    const pkg = JSON.parse(originalPkgJson);
-    delete pkg.main;
-    writeFileSync(pkgJsonPath, JSON.stringify(pkg, null, 2));
+// Temporarily rename the npm electron folder
+function hideNpmElectron() {
+  if (existsSync(electronPkgPath) && !existsSync(electronBackupPath)) {
+    renameSync(electronPkgPath, electronBackupPath);
+    console.log('[start-electron] Temporarily renamed node_modules/electron');
   }
-
-  console.log('[start-electron] Disabled npm electron module');
 }
 
-// Restore the npm electron module
+// Restore the npm electron folder
 function restoreNpmElectron() {
-  // Restore index.js
-  if (existsSync(indexJsBackupPath)) {
-    renameSync(indexJsBackupPath, indexJsPath);
+  if (existsSync(electronBackupPath) && !existsSync(electronPkgPath)) {
+    renameSync(electronBackupPath, electronPkgPath);
+    console.log('[start-electron] Restored node_modules/electron');
   }
-
-  // Restore package.json
-  if (originalPkgJson) {
-    writeFileSync(pkgJsonPath, originalPkgJson);
-  }
-
-  console.log('[start-electron] Restored npm electron module');
 }
 
-const electronPath = getElectronPath();
-const appPath = projectRoot;
+// The electron binary path after renaming
+const electronPathAfterRename = electronBinaryPath.replace(electronPkgPath, electronBackupPath);
 
 // Build args for electron
-const args = [appPath, '--no-sandbox', '--disable-gpu'];
+// Use Wayland backend for GUI in Linux containers (more reliable than X11)
+const args = [
+  projectRoot,
+  '--no-sandbox',
+  '--disable-gpu',
+  '--ozone-platform=wayland',  // Use Wayland instead of X11
+];
 
 // Add any extra args passed to this script
 args.push(...process.argv.slice(2));
 
-console.log(`Starting Electron: ${electronPath}`);
-console.log(`App path: ${appPath}`);
+console.log(`Electron binary: ${electronBinaryPath}`);
+console.log(`After rename: ${electronPathAfterRename}`);
+console.log(`App path: ${projectRoot}`);
 console.log(`Args: ${args.join(' ')}`);
 
-// Disable npm electron before starting
-disableNpmElectron();
+// Hide npm electron folder before starting
+hideNpmElectron();
 
-// Spawn electron process
-const electron = spawn(electronPath, args, {
+// Create a clean env without ELECTRON_RUN_AS_NODE
+const cleanEnv = { ...process.env };
+delete cleanEnv.ELECTRON_RUN_AS_NODE;
+cleanEnv.ELECTRON_DISABLE_SANDBOX = '1';
+
+// Configure Wayland environment
+cleanEnv.WAYLAND_DISPLAY = cleanEnv.WAYLAND_DISPLAY || 'wayland-0';
+cleanEnv.XDG_RUNTIME_DIR = cleanEnv.XDG_RUNTIME_DIR || '/tmp';
+// Keep DISPLAY as fallback for X11 if needed
+if (!cleanEnv.DISPLAY) {
+  cleanEnv.DISPLAY = ':0';
+}
+
+// Spawn electron process using the path in the renamed location
+const electron = spawn(electronPathAfterRename, args, {
   stdio: 'inherit',
-  env: {
-    ...process.env,
-    ELECTRON_DISABLE_SANDBOX: '1',
-  },
+  env: cleanEnv,
 });
 
 electron.on('close', (code) => {

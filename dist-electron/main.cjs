@@ -350,25 +350,25 @@ var require_utils = __commonJS({
       }
       mkdirSync(folder);
     };
-    Utils.prototype.writeFileTo = function(path3, content, overwrite, attr) {
+    Utils.prototype.writeFileTo = function(path4, content, overwrite, attr) {
       const self = this;
-      if (self.fs.existsSync(path3)) {
+      if (self.fs.existsSync(path4)) {
         if (!overwrite) return false;
-        var stat = self.fs.statSync(path3);
+        var stat = self.fs.statSync(path4);
         if (stat.isDirectory()) {
           return false;
         }
       }
-      var folder = pth.dirname(path3);
+      var folder = pth.dirname(path4);
       if (!self.fs.existsSync(folder)) {
         self.makeDir(folder);
       }
       var fd;
       try {
-        fd = self.fs.openSync(path3, "w", 438);
+        fd = self.fs.openSync(path4, "w", 438);
       } catch (e) {
-        self.fs.chmodSync(path3, 438);
-        fd = self.fs.openSync(path3, "w", 438);
+        self.fs.chmodSync(path4, 438);
+        fd = self.fs.openSync(path4, "w", 438);
       }
       if (fd) {
         try {
@@ -377,31 +377,31 @@ var require_utils = __commonJS({
           self.fs.closeSync(fd);
         }
       }
-      self.fs.chmodSync(path3, attr || 438);
+      self.fs.chmodSync(path4, attr || 438);
       return true;
     };
-    Utils.prototype.writeFileToAsync = function(path3, content, overwrite, attr, callback) {
+    Utils.prototype.writeFileToAsync = function(path4, content, overwrite, attr, callback) {
       if (typeof attr === "function") {
         callback = attr;
         attr = void 0;
       }
       const self = this;
-      self.fs.exists(path3, function(exist) {
+      self.fs.exists(path4, function(exist) {
         if (exist && !overwrite) return callback(false);
-        self.fs.stat(path3, function(err, stat) {
+        self.fs.stat(path4, function(err, stat) {
           if (exist && stat.isDirectory()) {
             return callback(false);
           }
-          var folder = pth.dirname(path3);
+          var folder = pth.dirname(path4);
           self.fs.exists(folder, function(exists) {
             if (!exists) self.makeDir(folder);
-            self.fs.open(path3, "w", 438, function(err2, fd) {
+            self.fs.open(path4, "w", 438, function(err2, fd) {
               if (err2) {
-                self.fs.chmod(path3, 438, function() {
-                  self.fs.open(path3, "w", 438, function(err3, fd2) {
+                self.fs.chmod(path4, 438, function() {
+                  self.fs.open(path4, "w", 438, function(err3, fd2) {
                     self.fs.write(fd2, content, 0, content.length, 0, function() {
                       self.fs.close(fd2, function() {
-                        self.fs.chmod(path3, attr || 438, function() {
+                        self.fs.chmod(path4, attr || 438, function() {
                           callback(true);
                         });
                       });
@@ -411,13 +411,13 @@ var require_utils = __commonJS({
               } else if (fd) {
                 self.fs.write(fd, content, 0, content.length, 0, function() {
                   self.fs.close(fd, function() {
-                    self.fs.chmod(path3, attr || 438, function() {
+                    self.fs.chmod(path4, attr || 438, function() {
                       callback(true);
                     });
                   });
                 });
               } else {
-                self.fs.chmod(path3, attr || 438, function() {
+                self.fs.chmod(path4, attr || 438, function() {
                   callback(true);
                 });
               }
@@ -426,7 +426,7 @@ var require_utils = __commonJS({
         });
       });
     };
-    Utils.prototype.findFiles = function(path3) {
+    Utils.prototype.findFiles = function(path4) {
       const self = this;
       function findSync(dir, pattern, recursive) {
         if (typeof pattern === "boolean") {
@@ -435,16 +435,16 @@ var require_utils = __commonJS({
         }
         let files = [];
         self.fs.readdirSync(dir).forEach(function(file) {
-          const path4 = pth.join(dir, file);
-          const stat = self.fs.statSync(path4);
-          if (!pattern || pattern.test(path4)) {
-            files.push(pth.normalize(path4) + (stat.isDirectory() ? self.sep : ""));
+          const path5 = pth.join(dir, file);
+          const stat = self.fs.statSync(path5);
+          if (!pattern || pattern.test(path5)) {
+            files.push(pth.normalize(path5) + (stat.isDirectory() ? self.sep : ""));
           }
-          if (stat.isDirectory() && recursive) files = files.concat(findSync(path4, pattern, recursive));
+          if (stat.isDirectory() && recursive) files = files.concat(findSync(path5, pattern, recursive));
         });
         return files;
       }
-      return findSync(path3, void 0, true);
+      return findSync(path4, void 0, true);
     };
     Utils.prototype.findFilesAsync = function(dir, cb) {
       const self = this;
@@ -499,14 +499,14 @@ var require_utils = __commonJS({
           return "UNSUPPORTED (" + method + ")";
       }
     };
-    Utils.canonical = function(path3) {
-      if (!path3) return "";
-      const safeSuffix = pth.posix.normalize("/" + path3.split("\\").join("/"));
+    Utils.canonical = function(path4) {
+      if (!path4) return "";
+      const safeSuffix = pth.posix.normalize("/" + path4.split("\\").join("/"));
       return pth.join(".", safeSuffix);
     };
-    Utils.zipnamefix = function(path3) {
-      if (!path3) return "";
-      const safeSuffix = pth.posix.normalize("/" + path3.split("\\").join("/"));
+    Utils.zipnamefix = function(path4) {
+      if (!path4) return "";
+      const safeSuffix = pth.posix.normalize("/" + path4.split("\\").join("/"));
       return pth.posix.join(".", safeSuffix);
     };
     Utils.findLast = function(arr, callback) {
@@ -523,9 +523,9 @@ var require_utils = __commonJS({
       prefix = pth.resolve(pth.normalize(prefix));
       var parts = name.split("/");
       for (var i = 0, l = parts.length; i < l; i++) {
-        var path3 = pth.normalize(pth.join(prefix, parts.slice(i, l).join(pth.sep)));
-        if (path3.indexOf(prefix) === 0) {
-          return path3;
+        var path4 = pth.normalize(pth.join(prefix, parts.slice(i, l).join(pth.sep)));
+        if (path4.indexOf(prefix) === 0) {
+          return path4;
         }
       }
       return pth.normalize(pth.join(prefix, pth.basename(name)));
@@ -565,8 +565,8 @@ var require_utils = __commonJS({
 var require_fattr = __commonJS({
   "node_modules/adm-zip/util/fattr.js"(exports2, module2) {
     var pth = require("path");
-    module2.exports = function(path3, { fs: fs2 }) {
-      var _path = path3 || "", _obj = newAttr(), _stat = null;
+    module2.exports = function(path4, { fs: fs3 }) {
+      var _path = path4 || "", _obj = newAttr(), _stat = null;
       function newAttr() {
         return {
           directory: false,
@@ -577,8 +577,8 @@ var require_fattr = __commonJS({
           atime: 0
         };
       }
-      if (_path && fs2.existsSync(_path)) {
-        _stat = fs2.statSync(_path);
+      if (_path && fs3.existsSync(_path)) {
+        _stat = fs3.statSync(_path);
         _obj.directory = _stat.isDirectory();
         _obj.mtime = _stat.mtime;
         _obj.atime = _stat.atime;
@@ -2681,49 +2681,310 @@ var require_adm_zip = __commonJS({
 });
 
 // electron/main.ts
-var import_electron2 = require("electron");
+var import_electron3 = require("electron");
 var import_node_path = __toESM(require("node:path"), 1);
 
 // electron/handlers/GameHandler.ts
+var import_electron2 = require("electron");
+var import_path2 = __toESM(require("path"), 1);
+var import_fs3 = __toESM(require("fs"), 1);
+var import_child_process2 = require("child_process");
+var import_util2 = require("util");
+var import_adm_zip2 = __toESM(require_adm_zip(), 1);
+var import_fs4 = require("fs");
+
+// electron/handlers/JavaManager.ts
 var import_electron = require("electron");
 var import_path = __toESM(require("path"), 1);
 var import_fs = __toESM(require("fs"), 1);
+var import_fs2 = require("fs");
 var import_child_process = require("child_process");
 var import_util = require("util");
 var import_adm_zip = __toESM(require_adm_zip(), 1);
-var import_fs2 = require("fs");
 var execAsync = (0, import_util.promisify)(import_child_process.exec);
+var ADOPTIUM_API_BASE = "https://api.adoptium.net/v3/binary/latest";
+var JAVA_VERSION = "17";
+var JVM_IMPL = "hotspot";
+var VENDOR = "eclipse";
+var JavaManager = class {
+  javaDir;
+  markerFile;
+  constructor() {
+    this.javaDir = import_path.default.join(import_electron.app.getPath("userData"), "java");
+    this.markerFile = import_path.default.join(this.javaDir, ".java17_installed");
+  }
+  /**
+   * Ensures Java 17 is available, downloading it if necessary.
+   * Returns the path to the java executable.
+   */
+  async ensureJava(sender) {
+    const localJavaPath = this.getLocalJavaPath();
+    if (localJavaPath && import_fs.default.existsSync(localJavaPath)) {
+      console.log("[JavaManager] Using locally installed Java:", localJavaPath);
+      return localJavaPath;
+    }
+    const systemJava = await this.detectSystemJava();
+    if (systemJava) {
+      console.log("[JavaManager] Using system Java:", systemJava);
+      return systemJava;
+    }
+    console.log("[JavaManager] No Java found, downloading...");
+    return this.downloadAndInstallJava(sender);
+  }
+  /**
+   * Detects if Java 17+ is available on the system PATH or common locations.
+   */
+  async detectSystemJava() {
+    const javaPaths = this.getCommonJavaPaths();
+    for (const javaPath of javaPaths) {
+      if (await this.isValidJava17(javaPath)) {
+        return javaPath;
+      }
+    }
+    return null;
+  }
+  /**
+   * Returns common Java installation paths based on OS.
+   */
+  getCommonJavaPaths() {
+    const paths = ["java"];
+    const platform = process.platform;
+    if (platform === "win32") {
+      const programFiles = process.env["ProgramFiles"] || "C:\\Program Files";
+      const programFilesX86 = process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)";
+      paths.push(
+        import_path.default.join(programFiles, "Eclipse Adoptium", "jdk-17*", "bin", "java.exe"),
+        import_path.default.join(programFiles, "Java", "jdk-17*", "bin", "java.exe"),
+        import_path.default.join(programFiles, "Java", "jre-17*", "bin", "java.exe"),
+        import_path.default.join(programFiles, "Temurin", "jdk-17*", "bin", "java.exe"),
+        import_path.default.join(programFilesX86, "Java", "jdk-17*", "bin", "java.exe")
+      );
+    } else if (platform === "darwin") {
+      paths.push(
+        "/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home/bin/java",
+        "/Library/Java/JavaVirtualMachines/adoptopenjdk-17.jdk/Contents/Home/bin/java",
+        "/usr/local/opt/openjdk@17/bin/java",
+        "/opt/homebrew/opt/openjdk@17/bin/java"
+      );
+    } else {
+      paths.push(
+        "/usr/lib/jvm/temurin-17-jdk/bin/java",
+        "/usr/lib/jvm/java-17-openjdk/bin/java",
+        "/usr/lib/jvm/java-17-openjdk-amd64/bin/java",
+        "/usr/lib/jvm/java-17-temurin/bin/java",
+        "/opt/java/openjdk/bin/java"
+      );
+    }
+    return paths;
+  }
+  /**
+   * Checks if the given Java path is valid and is Java 17+.
+   */
+  async isValidJava17(javaPath) {
+    try {
+      const { stdout, stderr } = await execAsync(`"${javaPath}" -version`);
+      const output = stdout + stderr;
+      const versionMatch = output.match(/version "(\d+)/);
+      if (versionMatch) {
+        const majorVersion = parseInt(versionMatch[1], 10);
+        return majorVersion >= 17;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+  /**
+   * Gets platform info for Adoptium API.
+   */
+  getPlatformInfo() {
+    const platform = process.platform;
+    const arch = process.arch;
+    let os;
+    let extension;
+    let executablePath;
+    switch (platform) {
+      case "win32":
+        os = "windows";
+        extension = "zip";
+        executablePath = "bin/java.exe";
+        break;
+      case "darwin":
+        os = "mac";
+        extension = "tar.gz";
+        executablePath = "Contents/Home/bin/java";
+        break;
+      default:
+        os = "linux";
+        extension = "tar.gz";
+        executablePath = "bin/java";
+    }
+    let archStr;
+    switch (arch) {
+      case "arm64":
+        archStr = "aarch64";
+        break;
+      case "x64":
+      default:
+        archStr = "x64";
+    }
+    return { os, arch: archStr, extension, executablePath };
+  }
+  /**
+   * Gets the download URL for Adoptium JRE 17.
+   */
+  getDownloadUrl() {
+    const info = this.getPlatformInfo();
+    const url = `${ADOPTIUM_API_BASE}/${JAVA_VERSION}/ga/${info.os}/${info.arch}/jre/${JVM_IMPL}/normal/${VENDOR}`;
+    const filename = `temurin-17-jre.${info.extension}`;
+    return { url, filename };
+  }
+  /**
+   * Gets the path to the locally installed Java executable.
+   */
+  getLocalJavaPath() {
+    if (!import_fs.default.existsSync(this.markerFile)) {
+      return null;
+    }
+    const info = this.getPlatformInfo();
+    if (!import_fs.default.existsSync(this.javaDir)) {
+      return null;
+    }
+    const entries = import_fs.default.readdirSync(this.javaDir);
+    const jreDir = entries.find(
+      (e) => e.startsWith("jdk-17") && import_fs.default.statSync(import_path.default.join(this.javaDir, e)).isDirectory()
+    );
+    if (!jreDir) {
+      return null;
+    }
+    const javaPath = import_path.default.join(this.javaDir, jreDir, info.executablePath);
+    if (import_fs.default.existsSync(javaPath)) {
+      return javaPath;
+    }
+    return null;
+  }
+  /**
+   * Downloads and installs Java 17 JRE.
+   */
+  async downloadAndInstallJava(sender) {
+    const { url, filename } = this.getDownloadUrl();
+    const info = this.getPlatformInfo();
+    import_fs.default.mkdirSync(this.javaDir, { recursive: true });
+    const archivePath = import_path.default.join(this.javaDir, filename);
+    this.sendProgress(sender, "Baixando Java 17...", 0);
+    console.log("[JavaManager] Downloading from:", url);
+    try {
+      const response = await fetch(url, { redirect: "follow" });
+      if (!response.ok) {
+        throw new Error(`Failed to download Java: ${response.status} ${response.statusText}`);
+      }
+      const total = Number(response.headers.get("content-length")) || 0;
+      const fileStream = (0, import_fs2.createWriteStream)(archivePath);
+      if (!response.body) {
+        throw new Error("No response body");
+      }
+      const reader = response.body.getReader();
+      let downloaded = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        fileStream.write(Buffer.from(value));
+        downloaded += value.length;
+        if (total > 0) {
+          const percent = Math.round(downloaded / total * 50);
+          this.sendProgress(sender, `Baixando Java 17... (${this.formatSize(downloaded)}/${this.formatSize(total)})`, percent);
+        }
+      }
+      fileStream.end();
+      await new Promise((resolve, reject) => {
+        fileStream.on("finish", resolve);
+        fileStream.on("error", reject);
+      });
+      console.log("[JavaManager] Download complete:", archivePath);
+    } catch (e) {
+      if (import_fs.default.existsSync(archivePath)) {
+        import_fs.default.unlinkSync(archivePath);
+      }
+      throw new Error(`Failed to download Java: ${e.message}`);
+    }
+    this.sendProgress(sender, "Extraindo Java 17...", 55);
+    console.log("[JavaManager] Extracting...");
+    try {
+      if (info.extension === "zip") {
+        const zip = new import_adm_zip.default(archivePath);
+        zip.extractAllTo(this.javaDir, true);
+      } else {
+        await execAsync(`tar -xzf "${archivePath}" -C "${this.javaDir}"`);
+      }
+      import_fs.default.writeFileSync(this.markerFile, (/* @__PURE__ */ new Date()).toISOString());
+      import_fs.default.unlinkSync(archivePath);
+    } catch (e) {
+      throw new Error(`Failed to extract Java: ${e.message}`);
+    }
+    const javaPath = this.getLocalJavaPath();
+    if (!javaPath) {
+      throw new Error("Java extraction failed: executable not found");
+    }
+    if (process.platform !== "win32") {
+      await execAsync(`chmod +x "${javaPath}"`);
+    }
+    this.sendProgress(sender, "Java 17 instalado!", 60);
+    console.log("[JavaManager] Java installed at:", javaPath);
+    return javaPath;
+  }
+  /**
+   * Sends progress update to the renderer.
+   */
+  sendProgress(sender, status, progress) {
+    if (sender) {
+      sender.send("launch-progress", { status, progress });
+    }
+  }
+  /**
+   * Formats bytes to human-readable size.
+   */
+  formatSize(bytes) {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  }
+};
+
+// electron/handlers/GameHandler.ts
+var execAsync2 = (0, import_util2.promisify)(import_child_process2.exec);
 var VERSION_MANIFEST_URL = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
 var TARGET_VERSION_ID = "b1.7.3";
 var GameHandler = class {
   gamePath;
   javaPath;
+  javaManager;
   constructor() {
-    this.gamePath = import_path.default.join(import_electron.app.getPath("userData"), "gamedata");
+    this.gamePath = import_path2.default.join(import_electron2.app.getPath("userData"), "gamedata");
     this.javaPath = "java";
+    this.javaManager = new JavaManager();
   }
   init() {
-    import_electron.ipcMain.handle("launch-game", async (event, options) => {
+    import_electron2.ipcMain.handle("launch-game", async (event, options) => {
       return this.handleLaunch(event, options);
     });
-    import_electron.ipcMain.handle("check-custom-instance", async () => {
-      const instanceZipPath = import_path.default.resolve("instance.zip");
-      const instanceDir = import_path.default.join(import_electron.app.getPath("userData"), "instances", "default", "instance.cfg");
-      return import_fs.default.existsSync(instanceZipPath) || import_fs.default.existsSync(instanceDir);
+    import_electron2.ipcMain.handle("check-custom-instance", async () => {
+      const instanceZipPath = import_path2.default.resolve("instance.zip");
+      const instanceDir = import_path2.default.join(import_electron2.app.getPath("userData"), "instances", "default", "instance.cfg");
+      return import_fs3.default.existsSync(instanceZipPath) || import_fs3.default.existsSync(instanceDir);
     });
-    import_electron.ipcMain.handle("check-update-status", async () => {
+    import_electron2.ipcMain.handle("check-update-status", async () => {
       return this.handleUpdateCheck();
     });
-    import_electron.ipcMain.handle("perform-update", async (event) => {
+    import_electron2.ipcMain.handle("perform-update", async (event) => {
       return this.handlePerformUpdate(event);
     });
   }
   sendProgress(sender, status, progress) {
     sender.send("launch-progress", { status, progress });
   }
-  async checkJava(path3) {
+  async checkJava(path4) {
     try {
-      await execAsync(`"${path3}" -version`);
+      await execAsync2(`"${path4}" -version`);
       return true;
     } catch (e) {
       return false;
@@ -2731,31 +2992,31 @@ var GameHandler = class {
   }
   async checkAndExtractInstance() {
     const zipName = "allfrominstance.zip";
-    const instanceZipPath = import_path.default.resolve(zipName);
-    const instanceDir = import_path.default.join(import_electron.app.getPath("userData"), "instances", "default");
-    if (import_fs.default.existsSync(instanceZipPath)) {
+    const instanceZipPath = import_path2.default.resolve(zipName);
+    const instanceDir = import_path2.default.join(import_electron2.app.getPath("userData"), "instances", "default");
+    if (import_fs3.default.existsSync(instanceZipPath)) {
       console.log(`Found ${zipName}, forcing extraction to reset instance...`);
       try {
-        const zip = new import_adm_zip.default(instanceZipPath);
-        import_fs.default.mkdirSync(instanceDir, { recursive: true });
+        const zip = new import_adm_zip2.default(instanceZipPath);
+        import_fs3.default.mkdirSync(instanceDir, { recursive: true });
         zip.extractAllTo(instanceDir, true);
-        const entries = import_fs.default.readdirSync(instanceDir);
-        const topLevelDir = entries.find((e) => import_fs.default.statSync(import_path.default.join(instanceDir, e)).isDirectory() && e.startsWith("Beta Unleashed"));
+        const entries = import_fs3.default.readdirSync(instanceDir);
+        const topLevelDir = entries.find((e) => import_fs3.default.statSync(import_path2.default.join(instanceDir, e)).isDirectory() && e.startsWith("Beta Unleashed"));
         if (topLevelDir) {
-          const topPath = import_path.default.join(instanceDir, topLevelDir);
+          const topPath = import_path2.default.join(instanceDir, topLevelDir);
           console.log(`Moving files from ${topPath} to ${instanceDir}...`);
-          await execAsync(`cp -a "${topPath}/." "${instanceDir}/"`);
+          await execAsync2(`cp -a "${topPath}/." "${instanceDir}/"`);
         }
         console.log("Extraction and merge complete.");
-        import_fs.default.renameSync(instanceZipPath, instanceZipPath + ".extracted");
+        import_fs3.default.renameSync(instanceZipPath, instanceZipPath + ".extracted");
         return instanceDir;
       } catch (e) {
         console.error("Failed to extract instance:", e);
         return null;
       }
     }
-    const oldZip = import_path.default.resolve("instance.zip");
-    if (!import_fs.default.existsSync(oldZip) && !import_fs.default.existsSync(import_path.default.join(instanceDir, "instance.cfg"))) {
+    const oldZip = import_path2.default.resolve("instance.zip");
+    if (!import_fs3.default.existsSync(oldZip) && !import_fs3.default.existsSync(import_path2.default.join(instanceDir, "instance.cfg"))) {
       console.log("instance.zip not found locally. Attempting to download from VPS...");
       try {
         console.log("Downloading instance.zip from VPS...");
@@ -2763,19 +3024,19 @@ var GameHandler = class {
         const response = await fetch(vpsUrl);
         if (response.ok) {
           const arrayBuffer = await response.arrayBuffer();
-          import_fs.default.writeFileSync(oldZip, Buffer.from(arrayBuffer));
+          import_fs3.default.writeFileSync(oldZip, Buffer.from(arrayBuffer));
           console.log("instance.zip downloaded successfully.");
         }
       } catch (e) {
         console.error("Failed to download instance.zip:", e);
       }
     }
-    if (import_fs.default.existsSync(import_path.default.join(instanceDir, "instance.cfg"))) {
+    if (import_fs3.default.existsSync(import_path2.default.join(instanceDir, "instance.cfg"))) {
       return instanceDir;
     }
-    if (import_fs.default.existsSync(oldZip)) {
-      const zip = new import_adm_zip.default(oldZip);
-      import_fs.default.mkdirSync(instanceDir, { recursive: true });
+    if (import_fs3.default.existsSync(oldZip)) {
+      const zip = new import_adm_zip2.default(oldZip);
+      import_fs3.default.mkdirSync(instanceDir, { recursive: true });
       zip.extractAllTo(instanceDir, true);
       return instanceDir;
     }
@@ -2783,16 +3044,16 @@ var GameHandler = class {
   }
   async downloadFile(url, dest, filename, sender) {
     this.sendProgress(sender, `Baixando ${filename}...`, 0);
-    import_fs.default.mkdirSync(dest, { recursive: true });
-    const filePath = import_path.default.join(dest, filename);
+    import_fs3.default.mkdirSync(dest, { recursive: true });
+    const filePath = import_path2.default.join(dest, filename);
     try {
-      if (import_fs.default.existsSync(filePath)) {
+      if (import_fs3.default.existsSync(filePath)) {
         return filePath;
       }
       const response = await fetch(url);
       if (!response.ok) throw new Error(`Failed to download ${url}: ${response.statusText}`);
       const total = Number(response.headers.get("content-length")) || 0;
-      const fileStream = (0, import_fs2.createWriteStream)(filePath);
+      const fileStream = (0, import_fs4.createWriteStream)(filePath);
       if (!response.body) throw new Error("No body");
       const reader = response.body.getReader();
       let downloaded = 0;
@@ -2806,16 +3067,16 @@ var GameHandler = class {
         }
       }
       fileStream.end();
-      const stats = import_fs.default.statSync(filePath);
+      const stats = import_fs3.default.statSync(filePath);
       if (filename.endsWith(".jar") && stats.size < 100) {
-        import_fs.default.unlinkSync(filePath);
+        import_fs3.default.unlinkSync(filePath);
         throw new Error(`Downloaded file ${filename} is too small (${stats.size} bytes). Likely invalid.`);
       }
       return filePath;
     } catch (e) {
-      if (import_fs.default.existsSync(filePath)) {
+      if (import_fs3.default.existsSync(filePath)) {
         try {
-          import_fs.default.unlinkSync(filePath);
+          import_fs3.default.unlinkSync(filePath);
         } catch (delErr) {
         }
       }
@@ -2827,22 +3088,25 @@ var GameHandler = class {
     const instanceDir = await this.checkAndExtractInstance();
     const isCustomInstance = !!instanceDir;
     const gameRoot = instanceDir || this.gamePath;
-    const dotMinecraft = isCustomInstance ? import_path.default.join(gameRoot, ".minecraft") : gameRoot;
-    if (!import_fs.default.existsSync(dotMinecraft)) import_fs.default.mkdirSync(dotMinecraft, { recursive: true });
-    const sensitiveCache = import_path.default.join(dotMinecraft, ".fabric", "remappedJars");
-    if (import_fs.default.existsSync(sensitiveCache)) {
+    const dotMinecraft = isCustomInstance ? import_path2.default.join(gameRoot, ".minecraft") : gameRoot;
+    if (!import_fs3.default.existsSync(dotMinecraft)) import_fs3.default.mkdirSync(dotMinecraft, { recursive: true });
+    const sensitiveCache = import_path2.default.join(dotMinecraft, ".fabric", "remappedJars");
+    if (import_fs3.default.existsSync(sensitiveCache)) {
       console.log("Clearing remappedJars cache to force fresh map...");
-      import_fs.default.rmSync(sensitiveCache, { recursive: true, force: true });
+      import_fs3.default.rmSync(sensitiveCache, { recursive: true, force: true });
     }
-    const binDir = import_path.default.join(dotMinecraft, "bin");
-    const nativesDir = import_path.default.join(binDir, "natives");
-    const librariesDir = import_path.default.join(gameRoot, "libraries");
+    const binDir = import_path2.default.join(dotMinecraft, "bin");
+    const nativesDir = import_path2.default.join(binDir, "natives");
+    const librariesDir = import_path2.default.join(gameRoot, "libraries");
     try {
       if (!options.username) throw new Error("Username required");
-      if (options.javaPath) this.javaPath = options.javaPath;
-      const javaOk = await this.checkJava(this.javaPath);
-      if (!javaOk) throw new Error("Java not found. Please install Java 8.");
-      this.sendProgress(event.sender, "Verificando vers\xE3o...", 10);
+      this.sendProgress(event.sender, "Verificando Java...", 5);
+      try {
+        this.javaPath = options.javaPath || await this.javaManager.ensureJava(event.sender);
+      } catch (e) {
+        throw new Error("Falha ao configurar Java: " + e.message);
+      }
+      this.sendProgress(event.sender, "Verificando vers\xE3o...", 65);
       const manifestRes = await fetch(VERSION_MANIFEST_URL);
       const manifest = await manifestRes.json();
       const versionData = manifest.versions.find((v) => v.id === TARGET_VERSION_ID);
@@ -2852,12 +3116,12 @@ var GameHandler = class {
       const clientUrl = versionDetails.downloads.client.url;
       const mcJarPath = await this.downloadFile(clientUrl, binDir, "minecraft.jar", event.sender);
       if (!isCustomInstance) {
-        this.sendProgress(event.sender, "Baixando bibliotecas...", 30);
+        this.sendProgress(event.sender, "Baixando bibliotecas...", 70);
         for (const lib of versionDetails.libraries) {
           if (lib.downloads && lib.downloads.classifiers && lib.downloads.classifiers["natives-linux"]) {
             const native = lib.downloads.classifiers["natives-linux"];
-            const tempNativePath = await this.downloadFile(native.url, import_path.default.join(gameRoot, "temp_natives"), import_path.default.basename(native.path), event.sender);
-            const zip = new import_adm_zip.default(tempNativePath);
+            const tempNativePath = await this.downloadFile(native.url, import_path2.default.join(gameRoot, "temp_natives"), import_path2.default.basename(native.path), event.sender);
+            const zip = new import_adm_zip2.default(tempNativePath);
             zip.extractAllTo(nativesDir, true);
           }
         }
@@ -2866,12 +3130,12 @@ var GameHandler = class {
       let mainClass = "net.minecraft.client.Minecraft";
       let tweakClass = "";
       if (isCustomInstance) {
-        const mmcPath = import_path.default.join(instanceDir, "mmc-pack.json");
-        if (import_fs.default.existsSync(mmcPath)) {
-          const mmcPack = JSON.parse(import_fs.default.readFileSync(mmcPath, "utf-8"));
+        const mmcPath = import_path2.default.join(instanceDir, "mmc-pack.json");
+        if (import_fs3.default.existsSync(mmcPath)) {
+          const mmcPack = JSON.parse(import_fs3.default.readFileSync(mmcPath, "utf-8"));
           const fabricComponent = mmcPack.components.find((c) => c.uid === "net.fabricmc.fabric-loader");
           if (fabricComponent) {
-            this.sendProgress(event.sender, "Configurando Fabric/StationAPI...", 50);
+            this.sendProgress(event.sender, "Configurando Fabric/StationAPI...", 75);
             const fabricLibs = [
               { name: "asm:9.7.1", group: "org.ow2.asm", artifact: "asm", version: "9.7.1" },
               { name: "asm-analysis:9.7.1", group: "org.ow2.asm", artifact: "asm-analysis", version: "9.7.1" },
@@ -2898,27 +3162,27 @@ var GameHandler = class {
             const fabricBase = "https://maven.fabricmc.net/";
             const mavenCentral = "https://repo1.maven.org/maven2/";
             const legacyFabricRepo = "https://repo.legacyfabric.net/repository/legacyfabric/";
-            let bundledLibsZip = import_path.default.resolve("libraries.zip");
-            if (!import_fs.default.existsSync(bundledLibsZip)) {
+            let bundledLibsZip = import_path2.default.resolve("libraries.zip");
+            if (!import_fs3.default.existsSync(bundledLibsZip)) {
               console.log("libraries.zip not found locally. Attempting to download from VPS...");
-              this.sendProgress(event.sender, "Baixando bibliotecas do servidor...", 5);
+              this.sendProgress(event.sender, "Baixando bibliotecas do servidor...", 68);
               try {
                 const vpsUrl = "http://185.100.215.195/downloads/libraries.zip";
-                await this.downloadFile(vpsUrl, import_path.default.dirname(bundledLibsZip), "libraries.zip", event.sender);
+                await this.downloadFile(vpsUrl, import_path2.default.dirname(bundledLibsZip), "libraries.zip", event.sender);
               } catch (e) {
                 console.error("Failed to download libraries.zip from VPS. Trying to proceed without it... (Might crash if offline)", e);
               }
             }
-            if (import_fs.default.existsSync(bundledLibsZip)) {
-              const marker = import_path.default.join(librariesDir, ".bundled_extracted_v1");
-              if (!import_fs.default.existsSync(marker)) {
-                this.sendProgress(event.sender, "Extraindo bibliotecas locais (libraries.zip)...", 40);
+            if (import_fs3.default.existsSync(bundledLibsZip)) {
+              const marker = import_path2.default.join(librariesDir, ".bundled_extracted_v1");
+              if (!import_fs3.default.existsSync(marker)) {
+                this.sendProgress(event.sender, "Extraindo bibliotecas locais (libraries.zip)...", 72);
                 console.log("Found libraries.zip, extracting...");
                 try {
-                  if (!import_fs.default.existsSync(librariesDir)) import_fs.default.mkdirSync(librariesDir, { recursive: true });
-                  const zip = new import_adm_zip.default(bundledLibsZip);
+                  if (!import_fs3.default.existsSync(librariesDir)) import_fs3.default.mkdirSync(librariesDir, { recursive: true });
+                  const zip = new import_adm_zip2.default(bundledLibsZip);
                   zip.extractAllTo(librariesDir, true);
-                  import_fs.default.writeFileSync(marker, "extracted");
+                  import_fs3.default.writeFileSync(marker, "extracted");
                   console.log("Libraries extracted successfully.");
                 } catch (e) {
                   console.error("Failed to extract libraries.zip:", e);
@@ -2927,19 +3191,19 @@ var GameHandler = class {
             }
             for (const lib of fabricLibs) {
               const pathStr = `${lib.group.replace(/\./g, "/")}/${lib.artifact}/${lib.version}/${lib.artifact}-${lib.version}.jar`;
-              const flatDest = import_path.default.join(librariesDir, `${lib.artifact}-${lib.version}.jar`);
-              if (import_fs.default.existsSync(flatDest)) {
+              const flatDest = import_path2.default.join(librariesDir, `${lib.artifact}-${lib.version}.jar`);
+              if (import_fs3.default.existsSync(flatDest)) {
                 classpath.push(flatDest);
                 continue;
               }
-              const mavenDest = import_path.default.join(librariesDir, "libraries", pathStr);
-              if (import_fs.default.existsSync(mavenDest)) {
+              const mavenDest = import_path2.default.join(librariesDir, "libraries", pathStr);
+              if (import_fs3.default.existsSync(mavenDest)) {
                 console.log(`[Cache] Found library (maven struct): ${lib.artifact}`);
                 classpath.push(mavenDest);
                 continue;
               }
-              const mavenDirect = import_path.default.join(librariesDir, pathStr);
-              if (import_fs.default.existsSync(mavenDirect)) {
+              const mavenDirect = import_path2.default.join(librariesDir, pathStr);
+              if (import_fs3.default.existsSync(mavenDirect)) {
                 console.log(`[Cache] Found library (direct maven): ${lib.artifact}`);
                 classpath.push(mavenDirect);
                 continue;
@@ -2953,7 +3217,7 @@ var GameHandler = class {
               const libPath = await this.downloadFile(url, librariesDir, `${lib.artifact}-${lib.version}.jar`, event.sender);
               classpath.push(libPath);
             }
-            this.sendProgress(event.sender, "Baixando nativos (Legacy Fabric)...", 60);
+            this.sendProgress(event.sender, "Baixando nativos (Legacy Fabric)...", 78);
             const nativesList = [
               { group: "org.lwjgl.lwjgl", artifact: "lwjgl-platform", version: "2.9.4+legacyfabric.9", classifier: "natives-linux" },
               { group: "net.java.jinput", artifact: "jinput-platform", version: "2.0.5", classifier: "natives-linux" }
@@ -2961,16 +3225,16 @@ var GameHandler = class {
             for (const native of nativesList) {
               const filename = `${native.artifact}-${native.version}-${native.classifier}.jar`;
               const pathStr = `${native.group.replace(/\./g, "/")}/${native.artifact}/${native.version}/${filename}`;
-              const flatPath = import_path.default.join(librariesDir, filename);
-              const mavenPath = import_path.default.join(librariesDir, "libraries", pathStr);
-              const mavenDirect = import_path.default.join(librariesDir, pathStr);
+              const flatPath = import_path2.default.join(librariesDir, filename);
+              const mavenPath = import_path2.default.join(librariesDir, "libraries", pathStr);
+              const mavenDirect = import_path2.default.join(librariesDir, pathStr);
               let sourceZip = null;
-              if (import_fs.default.existsSync(flatPath)) sourceZip = flatPath;
-              else if (import_fs.default.existsSync(mavenPath)) sourceZip = mavenPath;
-              else if (import_fs.default.existsSync(mavenDirect)) sourceZip = mavenDirect;
+              if (import_fs3.default.existsSync(flatPath)) sourceZip = flatPath;
+              else if (import_fs3.default.existsSync(mavenPath)) sourceZip = mavenPath;
+              else if (import_fs3.default.existsSync(mavenDirect)) sourceZip = mavenDirect;
               if (sourceZip) {
                 console.log(`[Cache] Found native library locally: ${filename}`);
-                const zip2 = new import_adm_zip.default(sourceZip);
+                const zip2 = new import_adm_zip2.default(sourceZip);
                 zip2.extractAllTo(nativesDir, true);
                 continue;
               }
@@ -2978,8 +3242,8 @@ var GameHandler = class {
               if (native.group === "net.java.jinput") {
                 url = mavenCentral + pathStr;
               }
-              const tempPath = await this.downloadFile(url, import_path.default.join(gameRoot, "temp_natives"), filename, event.sender);
-              const zip = new import_adm_zip.default(tempPath);
+              const tempPath = await this.downloadFile(url, import_path2.default.join(gameRoot, "temp_natives"), filename, event.sender);
+              const zip = new import_adm_zip2.default(tempPath);
               zip.extractAllTo(nativesDir, true);
             }
             const loaderUrl = "https://maven.fabricmc.net/net/fabricmc/fabric-loader/0.16.7/fabric-loader-0.16.7.jar";
@@ -3003,13 +3267,13 @@ var GameHandler = class {
           if (lib.downloads && lib.downloads.artifact) {
             const art = lib.downloads.artifact;
             if (art.path.includes("lwjgl") || art.path.includes("jinput")) {
-              const libPath = await this.downloadFile(art.url, binDir, import_path.default.basename(art.path), event.sender);
+              const libPath = await this.downloadFile(art.url, binDir, import_path2.default.basename(art.path), event.sender);
               classpath.push(libPath);
             }
           }
         }
       }
-      this.sendProgress(event.sender, "Iniciando Jogo...", 90);
+      this.sendProgress(event.sender, "Iniciando Jogo...", 95);
       const launchArgs = [
         "-Djava.library.path=" + nativesDir,
         "-Dorg.lwjgl.librarypath=" + nativesDir,
@@ -3018,12 +3282,12 @@ var GameHandler = class {
         "-Dfabric.gameVersion=b1.7.3",
         "-Dfabric.envType=client",
         "-cp",
-        classpath.join(import_path.default.delimiter),
+        classpath.join(import_path2.default.delimiter),
         mainClass
       ];
       launchArgs.push("--username", options.username);
       launchArgs.push("--gameDir", dotMinecraft);
-      launchArgs.push("--assetsDir", import_path.default.join(dotMinecraft, "resources"));
+      launchArgs.push("--assetsDir", import_path2.default.join(dotMinecraft, "resources"));
       if (isCustomInstance && mainClass.includes("KnotClient")) {
         launchArgs.push("--assetIndex", "truly_legacy");
       }
@@ -3031,7 +3295,7 @@ var GameHandler = class {
       launchArgs.push("--port", "25565");
       console.log("Spawning java:", this.javaPath);
       console.log("Args:", launchArgs);
-      const gameProcess = (0, import_child_process.spawn)(this.javaPath, launchArgs, {
+      const gameProcess = (0, import_child_process2.spawn)(this.javaPath, launchArgs, {
         cwd: dotMinecraft
       });
       gameProcess.stdout.on("data", (data) => {
@@ -3054,11 +3318,11 @@ var GameHandler = class {
   // End of class (Removed unused methods: getVersionDetails, downloadLibraries, spawnGameProcess, old downloadFile)
   async handleUpdateCheck() {
     try {
-      const instanceDir = import_path.default.join(import_electron.app.getPath("userData"), "instances", "default");
-      const localVersionPath = import_path.default.join(instanceDir, "local_version.txt");
+      const instanceDir = import_path2.default.join(import_electron2.app.getPath("userData"), "instances", "default");
+      const localVersionPath = import_path2.default.join(instanceDir, "local_version.txt");
       let localVersion = "0.0";
-      if (import_fs.default.existsSync(localVersionPath)) {
-        localVersion = import_fs.default.readFileSync(localVersionPath, "utf-8").trim();
+      if (import_fs3.default.existsSync(localVersionPath)) {
+        localVersion = import_fs3.default.readFileSync(localVersionPath, "utf-8").trim();
       }
       const remoteUrl = "http://185.100.215.195/downloads/version.json";
       const response = await fetch(remoteUrl);
@@ -3080,20 +3344,20 @@ var GameHandler = class {
       const response = await fetch(remoteUrl);
       const remoteData = await response.json();
       if (!remoteData.mods_url) throw new Error("No mods_url in version.json");
-      const instanceDir = import_path.default.join(import_electron.app.getPath("userData"), "instances", "default");
+      const instanceDir = import_path2.default.join(import_electron2.app.getPath("userData"), "instances", "default");
       const gameRoot = instanceDir;
-      const modsDir = import_path.default.join(gameRoot, ".minecraft", "mods");
-      const tempUpdatePath = import_path.default.join(gameRoot, "temp_update.zip");
+      const modsDir = import_path2.default.join(gameRoot, ".minecraft", "mods");
+      const tempUpdatePath = import_path2.default.join(gameRoot, "temp_update.zip");
       await this.downloadFile(remoteData.mods_url, gameRoot, "temp_update.zip", event.sender);
-      if (import_fs.default.existsSync(modsDir)) {
+      if (import_fs3.default.existsSync(modsDir)) {
         this.sendProgress(event.sender, "Removendo mods antigos...", 40);
-        import_fs.default.rmSync(modsDir, { recursive: true, force: true });
+        import_fs3.default.rmSync(modsDir, { recursive: true, force: true });
       }
       this.sendProgress(event.sender, "Instalando novos mods...", 60);
-      const zip = new import_adm_zip.default(tempUpdatePath);
-      zip.extractAllTo(import_path.default.join(gameRoot, ".minecraft"), true);
-      import_fs.default.writeFileSync(import_path.default.join(instanceDir, "local_version.txt"), remoteData.version);
-      import_fs.default.unlinkSync(tempUpdatePath);
+      const zip = new import_adm_zip2.default(tempUpdatePath);
+      zip.extractAllTo(import_path2.default.join(gameRoot, ".minecraft"), true);
+      import_fs3.default.writeFileSync(import_path2.default.join(instanceDir, "local_version.txt"), remoteData.version);
+      import_fs3.default.unlinkSync(tempUpdatePath);
       this.sendProgress(event.sender, "Atualiza\xE7\xE3o conclu\xEDda!", 100);
       return { success: true };
     } catch (e) {
@@ -3105,10 +3369,10 @@ var GameHandler = class {
 };
 
 // electron/main.ts
-import_electron2.app.commandLine.appendSwitch("no-sandbox");
-import_electron2.app.commandLine.appendSwitch("disable-gpu");
-import_electron2.app.commandLine.appendSwitch("disable-software-rasterizer");
-import_electron2.app.commandLine.appendSwitch("disable-dev-shm-usage");
+import_electron3.app.commandLine.appendSwitch("no-sandbox");
+import_electron3.app.commandLine.appendSwitch("disable-gpu");
+import_electron3.app.commandLine.appendSwitch("disable-software-rasterizer");
+import_electron3.app.commandLine.appendSwitch("disable-dev-shm-usage");
 var gameHandler = new GameHandler();
 gameHandler.init();
 console.log("=== BlockyCRAFT Launcher Starting ===");
@@ -3117,7 +3381,7 @@ var mainWindow = null;
 var VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 function createWindow() {
   console.log("Creating main window...");
-  mainWindow = new import_electron2.BrowserWindow({
+  mainWindow = new import_electron3.BrowserWindow({
     width: 900,
     height: 600,
     minWidth: 800,
@@ -3159,22 +3423,22 @@ function createWindow() {
     mainWindow = null;
   });
 }
-import_electron2.app.whenReady().then(() => {
+import_electron3.app.whenReady().then(() => {
   createWindow();
   setupIPC();
 });
-import_electron2.app.on("window-all-closed", () => {
+import_electron3.app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
-    import_electron2.app.quit();
+    import_electron3.app.quit();
   }
 });
-import_electron2.app.on("activate", () => {
-  if (import_electron2.BrowserWindow.getAllWindows().length === 0) {
+import_electron3.app.on("activate", () => {
+  if (import_electron3.BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
 });
 function setupIPC() {
-  import_electron2.ipcMain.on("launch-game", (event, options) => {
+  import_electron3.ipcMain.on("launch-game", (event, options) => {
     console.log("[Main] Launch requested for:", options.username);
     const sender = event.sender;
     let progress = 0;
