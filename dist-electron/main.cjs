@@ -3028,6 +3028,7 @@ var GameHandler = class {
         launchArgs.push("--assetIndex", "truly_legacy");
       }
       launchArgs.push("--server", "185.100.215.195");
+      launchArgs.push("--port", "25565");
       console.log("Spawning java:", this.javaPath);
       console.log("Args:", launchArgs);
       const gameProcess = (0, import_child_process.spawn)(this.javaPath, launchArgs, {

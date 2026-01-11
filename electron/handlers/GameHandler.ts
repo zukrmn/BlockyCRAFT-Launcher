@@ -505,6 +505,9 @@ export class GameHandler {
 
             // Auto-connect to BlockyCRAFT server
             launchArgs.push('--server', '185.100.215.195');
+            launchArgs.push('--port', '25565');
+
+
 
             console.log('Spawning java:', this.javaPath);
             console.log('Args:', launchArgs);
