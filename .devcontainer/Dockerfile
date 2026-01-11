@@ -32,6 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcups2 \
     libasound2 \
     libdbus-1-3 \
+    dbus \
     # Java AWT/Swing dependencies
     libxrender1 \
     libxtst6 \
