@@ -6,6 +6,7 @@
     
     // Instala dependências npm e configura permissões X11
     "postCreateCommand": "npm install && sudo chmod -R 777 /tmp/.X11-unix 2>/dev/null || true",
+    "postStartCommand": "sudo mkdir -p /dev/input && sudo chmod 777 /dev/input",
     
     "customizations": {
         "vscode": {
