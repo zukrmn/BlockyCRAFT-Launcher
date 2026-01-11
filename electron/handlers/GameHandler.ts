@@ -503,6 +503,9 @@ export class GameHandler {
                 // Let's guess 'legacy' for now.
             }
 
+            // Auto-connect to BlockyCRAFT server
+            launchArgs.push('--server', '185.100.215.195');
+
             console.log('Spawning java:', this.javaPath);
             console.log('Args:', launchArgs);
 
