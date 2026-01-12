@@ -38,3 +38,5 @@ core
 # Log
 LOG.md  
 
+# Dist out
+dist-out/
