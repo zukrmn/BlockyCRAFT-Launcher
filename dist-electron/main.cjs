@@ -3371,9 +3371,7 @@ var GameHandler = class {
 
 // electron/main.ts
 import_electron3.app.commandLine.appendSwitch("no-sandbox");
-import_electron3.app.commandLine.appendSwitch("disable-gpu");
-import_electron3.app.commandLine.appendSwitch("disable-software-rasterizer");
-import_electron3.app.commandLine.appendSwitch("disable-dev-shm-usage");
+import_electron3.app.commandLine.appendSwitch("ozone-platform-hint", "auto");
 var gameHandler = new GameHandler();
 gameHandler.init();
 console.log("=== BlockyCRAFT Launcher Starting ===");
@@ -3426,7 +3424,6 @@ function createWindow() {
 }
 import_electron3.app.whenReady().then(() => {
   createWindow();
-  setupIPC();
 });
 import_electron3.app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
@@ -3438,38 +3435,4 @@ import_electron3.app.on("activate", () => {
     createWindow();
   }
 });
-function setupIPC() {
-  import_electron3.ipcMain.on("launch-game", (event, options) => {
-    console.log("[Main] Launch requested for:", options.username);
-    const sender = event.sender;
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 5;
-      const totalSize = 100 * 1024 * 1024;
-      const currentSize = progress / 100 * totalSize;
-      sender.send("download-progress", {
-        type: "download",
-        current: currentSize,
-        total: totalSize
-      });
-      if (progress % 20 === 0) {
-        const logs = [
-          "Downloading lwjgl.jar...",
-          "Verifying assets index...",
-          "Unpacking natives...",
-          "Checking game hash..."
-        ];
-        const log = logs[Math.floor(Math.random() * logs.length)];
-        sender.send("log-message", `[Backend] ${log}`);
-      }
-      if (progress >= 100) {
-        clearInterval(interval);
-        sender.send("log-message", "[Backend] Launching java process...");
-        setTimeout(() => {
-          sender.send("game-launched");
-        }, 1e3);
-      }
-    }, 200);
-  });
-}
 //# sourceMappingURL=main.cjs.map
