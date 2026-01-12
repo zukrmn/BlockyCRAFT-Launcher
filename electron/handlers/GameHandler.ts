@@ -101,42 +101,20 @@ export class GameHandler {
     }
 
     private async checkAndExtractInstance(): Promise<string | null> {
-        const zipName = 'allfrominstance.zip'; // User provided zip
-        const instanceZipPath = path.resolve(zipName);
         const instanceDir = path.join(app.getPath('userData'), 'instances', 'default');
+        const dataDir = app.getPath('userData');
 
-        if (fs.existsSync(instanceZipPath)) {
-            console.log(`Found ${zipName}, forcing extraction to reset instance...`);
-            try {
-                safeExtractZip(instanceZipPath, instanceDir);
-
-                // Now we need to move the contents of the top-level folder to instanceDir if it exists
-                const entries = fs.readdirSync(instanceDir);
-                const topLevelDir = entries.find(e => fs.statSync(path.join(instanceDir, e)).isDirectory() && e.startsWith('Beta Unleashed'));
-
-                if (topLevelDir) {
-                    const topPath = path.join(instanceDir, topLevelDir);
-                    console.log(`Moving files from ${topPath} to ${instanceDir}...`);
-                    // Use /. to include hidden files (like .minecraft)
-                    await execAsync(`cp -a "${topPath}/." "${instanceDir}/"`);
-                }
-
-                console.log('Extraction and merge complete.');
-                // Rename zip to avoid re-extracting every time?
-                fs.renameSync(instanceZipPath, instanceZipPath + '.extracted');
-                return instanceDir;
-            } catch (e) {
-                console.error('Failed to extract instance:', e);
-                return null;
-            }
+        // Check if instance already exists
+        if (fs.existsSync(path.join(instanceDir, 'instance.cfg'))) {
+            console.log('Instance already exists, skipping extraction.');
+            return instanceDir;
         }
 
-        // Fallback to old behavior (instance.zip or existing dir)
-        const oldZip = path.resolve('instance.zip');
+        // Download instance.zip to userData if not present
+        const instanceZip = path.join(dataDir, 'instance.zip');
 
-        // DOWNLOAD instance.zip IF MISSING (VPS Support)
-        if (!fs.existsSync(oldZip) && !fs.existsSync(path.join(instanceDir, 'instance.cfg'))) {
-            console.log('instance.zip not found locally. Attempting to download from VPS...');
+        if (!fs.existsSync(instanceZip)) {
+            console.log('instance.zip not found. Attempting to download from VPS...');
             // We need a sender to show progress, but checkAndExtractInstance doesn't have it passed usually.
             // For now, we'll log it. Ideally we refactor to pass sender.
             // Note: Since this is called before typical progress events, we might want to just blocking download.
@@ -152,7 +130,7 @@ export class GameHandler {
                     const response = await fetch(vpsUrl, { signal: AbortSignal.timeout(30000) });
                     if (response.ok) {
                         const arrayBuffer = await response.arrayBuffer();
-                        fs.writeFileSync(oldZip, Buffer.from(arrayBuffer));
+                        fs.writeFileSync(instanceZip, Buffer.from(arrayBuffer));
                         console.log('instance.zip downloaded successfully from', vpsUrl);
                         break; // Success, exit loop
                     }
@@ -163,12 +141,9 @@ export class GameHandler {
             }
         }
 
-        if (fs.existsSync(path.join(instanceDir, 'instance.cfg'))) {
-            return instanceDir;
-        }
-        if (fs.existsSync(oldZip)) {
-            // ... existing extraction logic ...
-            safeExtractZip(oldZip, instanceDir);
+        if (fs.existsSync(instanceZip) && validateZipFile(instanceZip)) {
+            console.log('Extracting instance.zip...');
+            safeExtractZip(instanceZip, instanceDir);
             return instanceDir;
         }
 
@@ -377,7 +352,7 @@ export class GameHandler {
                         const librariesAlreadyExtracted = fs.existsSync(markerV2) || fs.existsSync(markerV1) || fs.existsSync(asmExists);
 
                         if (!librariesAlreadyExtracted) {
-                            let bundledLibsZip = path.resolve('libraries.zip');
+                            let bundledLibsZip = path.join(app.getPath('userData'), 'libraries.zip');
 
                             // DOWNLOAD libraries.zip IF MISSING (VPS Support - only if UpdateManager didn't handle it)
                             if (!fs.existsSync(bundledLibsZip)) {
