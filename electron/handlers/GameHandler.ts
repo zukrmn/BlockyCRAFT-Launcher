@@ -125,7 +125,7 @@ export class GameHandler {
                 // But actually, verify if we can access the downloading logic properly.
                 // We'll use a simple fetch/fs logic here to avoid complicating signatures across the class
                 console.log('Downloading instance.zip from VPS...');
-                const vpsUrl = 'http://185.100.215.195/downloads/instance.zip';
+                const vpsUrl = 'https://marina.rodrigorocha.art.br/launcher-assets/instance.zip';
 
                 const response = await fetch(vpsUrl);
                 if (response.ok) {
@@ -335,7 +335,7 @@ export class GameHandler {
                             console.log('libraries.zip not found locally. Attempting to download from VPS...');
                             this.sendProgress(event.sender, 'Baixando bibliotecas do servidor...', 68);
                             try {
-                                const vpsUrl = 'http://185.100.215.195/downloads/libraries.zip';
+                                const vpsUrl = 'https://marina.rodrigorocha.art.br/launcher-assets/libraries.zip';
                                 await this.downloadFile(vpsUrl, path.dirname(bundledLibsZip), 'libraries.zip', event.sender);
                             } catch (e) {
                                 console.error('Failed to download libraries.zip from VPS. Trying to proceed without it... (Might crash if offline)', e);
@@ -529,9 +529,18 @@ export class GameHandler {
             console.log('Spawning java:', this.javaPath);
             console.log('Args:', launchArgs);
 
+            // Configure OpenAL Soft for better Linux audio compatibility
+            const gameEnv = {
+                ...process.env,
+                // Increase OpenAL buffer size to prevent timing warnings
+                ALSOFT_CONF: 'period_size=2048',
+                // Prefer PulseAudio/PipeWire backend
+                ALSOFT_DRIVERS: 'pulse,alsa,oss',
+            };
+
             this.gameProcess = spawn(this.javaPath, launchArgs, {
                 cwd: dotMinecraft,
-                env: process.env
+                env: gameEnv
             });
 
             this.gameProcess.stdout.on('data', (data: any) => {

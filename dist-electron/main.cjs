@@ -3031,7 +3031,7 @@ var GameHandler = class {
       console.log("instance.zip not found locally. Attempting to download from VPS...");
       try {
         console.log("Downloading instance.zip from VPS...");
-        const vpsUrl = "http://185.100.215.195/downloads/instance.zip";
+        const vpsUrl = "https://marina.rodrigorocha.art.br/launcher-assets/instance.zip";
         const response = await fetch(vpsUrl);
         if (response.ok) {
           const arrayBuffer = await response.arrayBuffer();
@@ -3178,7 +3178,7 @@ var GameHandler = class {
               console.log("libraries.zip not found locally. Attempting to download from VPS...");
               this.sendProgress(event.sender, "Baixando bibliotecas do servidor...", 68);
               try {
-                const vpsUrl = "http://185.100.215.195/downloads/libraries.zip";
+                const vpsUrl = "https://marina.rodrigorocha.art.br/launcher-assets/libraries.zip";
                 await this.downloadFile(vpsUrl, import_path2.default.dirname(bundledLibsZip), "libraries.zip", event.sender);
               } catch (e) {
                 console.error("Failed to download libraries.zip from VPS. Trying to proceed without it... (Might crash if offline)", e);
@@ -3306,9 +3306,16 @@ var GameHandler = class {
       launchArgs.push("--port", "25565");
       console.log("Spawning java:", this.javaPath);
       console.log("Args:", launchArgs);
+      const gameEnv = {
+        ...process.env,
+        // Increase OpenAL buffer size to prevent timing warnings
+        ALSOFT_CONF: "period_size=2048",
+        // Prefer PulseAudio/PipeWire backend
+        ALSOFT_DRIVERS: "pulse,alsa,oss"
+      };
       this.gameProcess = (0, import_child_process2.spawn)(this.javaPath, launchArgs, {
         cwd: dotMinecraft,
-        env: process.env
+        env: gameEnv
       });
       this.gameProcess.stdout.on("data", (data) => {
         const log = data.toString();
