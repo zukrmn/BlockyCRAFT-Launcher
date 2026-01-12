@@ -146,13 +146,15 @@
     background: #ef4444; /* Red color */
     color: white;
     border: none;
-    padding: 0 var(--spacing-xl);
+    padding: 0 var(--spacing-lg);
+    min-width: 100px;
     height: 100%;
     border-radius: var(--radius-md);
     cursor: pointer;
     font-weight: 600;
     text-transform: uppercase;
     transition: all 0.2s;
+    white-space: nowrap;
   }
   
   .btn-close:hover {

@@ -11,7 +11,7 @@ import_electron.contextBridge.exposeInMainWorld("electronAPI", {
     }
   },
   receive: (channel, callback) => {
-    const validChannels = ["launch-game", "launch-progress", "java-status", "download-progress", "game-closed"];
+    const validChannels = ["launch-game", "launch-progress", "java-status", "download-progress", "game-closed", "game-connected"];
     if (validChannels.includes(channel)) {
       import_electron.ipcRenderer.on(channel, (_event, ...args) => callback(...args));
     }

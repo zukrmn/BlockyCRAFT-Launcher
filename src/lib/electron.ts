@@ -82,5 +82,11 @@ export const ElectronService = {
         if (electron) {
             electron.receive('game-closed', callback);
         }
+    },
+
+    onGameConnected(callback: () => void) {
+        if (electron) {
+            electron.receive('game-connected', callback);
+        }
     }
 };

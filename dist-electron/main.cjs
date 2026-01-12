@@ -3311,7 +3311,11 @@ var GameHandler = class {
         env: process.env
       });
       this.gameProcess.stdout.on("data", (data) => {
-        console.log(`[MC]: ${data}`);
+        const log = data.toString();
+        console.log(`[MC]: ${log}`);
+        if (log.includes("Connecting to")) {
+          event.sender.send("game-connected");
+        }
       });
       this.gameProcess.stderr.on("data", (data) => {
         console.error(`[MC-Err]: ${data}`);

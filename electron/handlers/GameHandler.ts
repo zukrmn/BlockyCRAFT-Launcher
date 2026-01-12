@@ -535,7 +535,13 @@ export class GameHandler {
             });
 
             this.gameProcess.stdout.on('data', (data: any) => {
-                console.log(`[MC]: ${data}`);
+                const log = data.toString();
+                console.log(`[MC]: ${log}`);
+
+                // Check for successful client startup/connection to switch UI
+                if (log.includes('Connecting to')) {
+                    event.sender.send('game-connected');
+                }
             });
 
             this.gameProcess.stderr.on('data', (data: any) => {

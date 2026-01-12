@@ -41,16 +41,19 @@
     launchProgress = 0;
 
     const result = await ElectronService.launchGame(username);
-    if (result.success) {
-      isGameRunning = true;
-    } else {
+    if (!result.success) {
       isLaunching = false;
       alert(i18n.t("status.error") + result.error);
     }
   }
 
-  // Listen for game close
+  // Listen for game events
   $effect(() => {
+    ElectronService.onGameConnected(() => {
+        isLaunching = false;
+        isGameRunning = true;
+    });
+
     ElectronService.onGameClosed(() => {
       isLaunching = false;
       isGameRunning = false;

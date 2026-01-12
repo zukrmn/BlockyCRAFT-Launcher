@@ -14,7 +14,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   receive: (channel: string, callback: (...args: unknown[]) => void) => {
-    const validChannels = ['launch-game', 'launch-progress', 'java-status', 'download-progress', 'game-closed'];
+    const validChannels = ['launch-game', 'launch-progress', 'java-status', 'download-progress', 'game-closed', 'game-connected'];
     if (validChannels.includes(channel)) {
       ipcRenderer.on(channel, (_event, ...args) => callback(...args));
     }
