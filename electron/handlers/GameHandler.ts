@@ -344,7 +344,9 @@ export class GameHandler {
                             { name: 'log4j-core:2.22.1', group: 'org.apache.logging.log4j', artifact: 'log4j-core', version: '2.22.1' },
                             // Guava (Critical for modern Fabric/Mixin on older MC)
                             { name: 'guava:31.0.1-jre', group: 'com.google.guava', artifact: 'guava', version: '31.0.1-jre' },
-                            { name: 'failureaccess:1.0.1', group: 'com.google.guava', artifact: 'failureaccess', version: '1.0.1' }
+                            { name: 'failureaccess:1.0.1', group: 'com.google.guava', artifact: 'failureaccess', version: '1.0.1' },
+                            // SLF4J (Required by StationAPI)
+                            { name: 'slf4j-api:2.0.16', group: 'org.slf4j', artifact: 'slf4j-api', version: '2.0.16' }
                         ];
 
                         const fabricBase = 'https://maven.fabricmc.net/';
@@ -432,7 +434,7 @@ export class GameHandler {
                             // Try Fabric Maven first, then Maven Central, then Legacy Fabric
                             let url = fabricBase + pathStr;
 
-                            if (lib.group.startsWith('org.apache') || lib.group === 'commons-io' || lib.group === 'commons-codec' || lib.group === 'net.java.jutils' || lib.group === 'net.java.jinput' || lib.group.startsWith('org.ow2.asm') || lib.group.startsWith('com.google.guava')) {
+                            if (lib.group.startsWith('org.apache') || lib.group === 'commons-io' || lib.group === 'commons-codec' || lib.group === 'net.java.jutils' || lib.group === 'net.java.jinput' || lib.group.startsWith('org.ow2.asm') || lib.group.startsWith('com.google.guava') || lib.group.startsWith('org.slf4j')) {
                                 url = mavenCentral + pathStr;
                             } else if (lib.group.startsWith('org.lwjgl')) {
                                 url = legacyFabricRepo + pathStr;

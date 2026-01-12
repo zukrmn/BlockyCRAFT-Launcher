@@ -2956,23 +2956,29 @@ var import_path2 = __toESM(require("path"), 1);
 var import_fs3 = __toESM(require("fs"), 1);
 var import_fs4 = require("fs");
 var import_adm_zip2 = __toESM(require_adm_zip(), 1);
-var PRIMARY_BASE_URL = "https://craft.blocky.com.br/launcher-assets";
-var FALLBACK_BASE_URL = "https://marina.rodrigorocha.art.br/launcher-assets";
 var VERSION_JSON_URLS = [
-  `${PRIMARY_BASE_URL}/version.json`,
-  `${FALLBACK_BASE_URL}/version.json`
+  "https://craft.blocky.com.br/launcher-assets/version.json",
+  "https://marina.rodrigorocha.art.br/launcher-assets/version.json"
 ];
 var UpdateManager = class {
   dataPath;
   localVersionsPath;
   instanceDir;
   librariesDir;
-  activeBaseUrl = PRIMARY_BASE_URL;
   constructor() {
     this.dataPath = import_electron2.app.getPath("userData");
     this.localVersionsPath = import_path2.default.join(this.dataPath, "versions.json");
     this.instanceDir = import_path2.default.join(this.dataPath, "instances", "default");
     this.librariesDir = import_path2.default.join(this.instanceDir, "libraries");
+  }
+  /**
+   * Normalizes URL to array format
+   */
+  normalizeUrls(urlOrUrls) {
+    if (Array.isArray(urlOrUrls)) {
+      return urlOrUrls;
+    }
+    return [urlOrUrls];
   }
   /**
    * Gets local version info, creating default if it doesn't exist
@@ -3020,7 +3026,6 @@ var UpdateManager = class {
         const data = await response.json();
         console.log("[UpdateManager] Successfully fetched from:", url);
         console.log("[UpdateManager] Remote versions:", data);
-        this.activeBaseUrl = url.includes("craft.blocky.com.br") ? PRIMARY_BASE_URL : FALLBACK_BASE_URL;
         return data;
       } catch (e) {
         console.warn(`[UpdateManager] Failed to fetch from ${url}:`, e);
@@ -3028,12 +3033,6 @@ var UpdateManager = class {
     }
     console.error("[UpdateManager] All version URLs failed");
     return null;
-  }
-  /**
-   * Gets the fallback URL for a given primary URL
-   */
-  getFallbackUrl(primaryUrl) {
-    return primaryUrl.replace(PRIMARY_BASE_URL, FALLBACK_BASE_URL);
   }
   /**
    * Checks what updates are available
@@ -3072,20 +3071,17 @@ var UpdateManager = class {
     };
   }
   /**
-   * Downloads a file with progress reporting and fallback support
+   * Downloads a file with progress reporting and multi-URL fallback support
    */
-  async downloadFile(url, destPath, progressCallback) {
+  async downloadFile(urlOrUrls, destPath, progressCallback) {
     const filename = import_path2.default.basename(destPath);
     progressCallback?.(`Baixando ${filename}...`, 0);
-    const urlsToTry = [url];
-    const fallbackUrl = this.getFallbackUrl(url);
-    if (fallbackUrl !== url) {
-      urlsToTry.push(fallbackUrl);
-    }
+    const urls = this.normalizeUrls(urlOrUrls);
     let lastError = null;
-    for (const tryUrl of urlsToTry) {
+    for (let i = 0; i < urls.length; i++) {
+      const tryUrl = urls[i];
       try {
-        console.log(`[UpdateManager] Downloading ${tryUrl} to ${destPath}`);
+        console.log(`[UpdateManager] Downloading from URL ${i + 1}/${urls.length}: ${tryUrl}`);
         const response = await fetch(tryUrl, {
           signal: AbortSignal.timeout(6e4)
           // 60 second timeout for downloads
@@ -3123,7 +3119,7 @@ var UpdateManager = class {
         lastError = e;
       }
     }
-    throw lastError || new Error(`Failed to download ${filename} from all sources`);
+    throw lastError || new Error(`Failed to download ${filename} from all ${urls.length} sources`);
   }
   /**
    * Extracts a zip file to a directory
@@ -3538,7 +3534,9 @@ var GameHandler = class {
               { name: "log4j-core:2.22.1", group: "org.apache.logging.log4j", artifact: "log4j-core", version: "2.22.1" },
               // Guava (Critical for modern Fabric/Mixin on older MC)
               { name: "guava:31.0.1-jre", group: "com.google.guava", artifact: "guava", version: "31.0.1-jre" },
-              { name: "failureaccess:1.0.1", group: "com.google.guava", artifact: "failureaccess", version: "1.0.1" }
+              { name: "failureaccess:1.0.1", group: "com.google.guava", artifact: "failureaccess", version: "1.0.1" },
+              // SLF4J (Required by StationAPI)
+              { name: "slf4j-api:2.0.16", group: "org.slf4j", artifact: "slf4j-api", version: "2.0.16" }
             ];
             const fabricBase = "https://maven.fabricmc.net/";
             const mavenCentral = "https://repo1.maven.org/maven2/";
@@ -3602,7 +3600,7 @@ var GameHandler = class {
                 continue;
               }
               let url = fabricBase + pathStr;
-              if (lib.group.startsWith("org.apache") || lib.group === "commons-io" || lib.group === "commons-codec" || lib.group === "net.java.jutils" || lib.group === "net.java.jinput" || lib.group.startsWith("org.ow2.asm") || lib.group.startsWith("com.google.guava")) {
+              if (lib.group.startsWith("org.apache") || lib.group === "commons-io" || lib.group === "commons-codec" || lib.group === "net.java.jutils" || lib.group === "net.java.jinput" || lib.group.startsWith("org.ow2.asm") || lib.group.startsWith("com.google.guava") || lib.group.startsWith("org.slf4j")) {
                 url = mavenCentral + pathStr;
               } else if (lib.group.startsWith("org.lwjgl")) {
                 url = legacyFabricRepo + pathStr;

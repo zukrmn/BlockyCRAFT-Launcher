@@ -2,12 +2,14 @@
 
 ## 📁 Estrutura de Arquivos na VPS
 
-Você precisa disponibilizar os seguintes arquivos na URL principal:
-`https://craft.blocky.com.br/launcher-assets/`
+Você precisa disponibilizar os seguintes arquivos:
+
+**URL Principal:** `https://craft.blocky.com.br/launcher-assets/`
+**URL de Backup:** `https://marina.rodrigorocha.art.br/launcher-assets/`
 
 ```
 launcher-assets/
-├── version.json        ← OBRIGATÓRIO - Contém versões atuais
+├── version.json        ← OBRIGATÓRIO - Contém versões e URLs
 ├── instance.zip        ← Instância completa do Minecraft
 ├── libraries.zip       ← Bibliotecas Fabric/Babric
 └── mods.zip            ← (Opcional) Atualização apenas de mods
@@ -15,200 +17,154 @@ launcher-assets/
 
 ---
 
-## 🔗 URLs do Sistema
+## � Formato do `version.json` (Com URLs de Fallback)
 
-### URL Principal (Produção)
-```
-https://craft.blocky.com.br/launcher-assets/
-```
-
-### URL de Fallback (Backup automático)
-```
-https://marina.rodrigorocha.art.br/launcher-assets/
-```
-
-> **Nota:** O launcher tenta primeiro a URL principal. Se falhar (timeout de 10s ou erro HTTP), automaticamente tenta o fallback.
-
----
-
-## 📄 Formato do `version.json`
-
-Crie o arquivo `version.json` com este formato:
+O launcher agora suporta **múltiplas URLs** para cada recurso. Se a primeira falhar, tenta a próxima automaticamente.
 
 ```json
 {
-    "launcher_version": "0.1.0",
+    "launcher_version": "0.2.0",
     "instance": {
         "version": "2026.01.12",
-        "url": "https://craft.blocky.com.br/launcher-assets/instance.zip"
+        "url": [
+            "https://craft.blocky.com.br/launcher-assets/instance.zip",
+            "https://marina.rodrigorocha.art.br/launcher-assets/instance.zip"
+        ]
     },
     "libraries": {
         "version": "2026.01.12",
-        "url": "https://craft.blocky.com.br/launcher-assets/libraries.zip"
+        "url": [
+            "https://craft.blocky.com.br/launcher-assets/libraries.zip",
+            "https://marina.rodrigorocha.art.br/launcher-assets/libraries.zip"
+        ]
     },
     "mods": {
         "version": "1.0.0",
-        "url": "https://craft.blocky.com.br/launcher-assets/mods.zip",
-        "notes": "Descrição da atualização de mods"
+        "url": [
+            "https://craft.blocky.com.br/launcher-assets/mods.zip",
+            "https://marina.rodrigorocha.art.br/launcher-assets/mods.zip"
+        ],
+        "notes": "Descrição da atualização"
     }
 }
 ```
 
-### Campos Obrigatórios
+### Formatos Suportados para `url`:
 
-| Campo | Descrição |
-|-------|-----------|
-| `launcher_version` | Versão do launcher (para futuras verificações de compatibilidade) |
-| `instance.version` | Versão da instância - MUDE quando atualizar instance.zip |
-| `instance.url` | URL de download do instance.zip |
-| `libraries.version` | Versão das bibliotecas - MUDE quando atualizar libraries.zip |
-| `libraries.url` | URL de download do libraries.zip |
+**Array de URLs (recomendado):**
+```json
+"url": [
+    "https://servidor-principal.com/arquivo.zip",
+    "https://servidor-backup.com/arquivo.zip"
+]
+```
 
-### Campos Opcionais
-
-| Campo | Descrição |
-|-------|-----------|
-| `mods` | Bloco inteiro opcional - para atualizar apenas mods |
-| `mods.version` | Versão dos mods |
-| `mods.url` | URL do zip contendo a pasta `mods/` |
-| `mods.notes` | Notas da atualização (exibidas ao usuário) |
+**URL única (compatibilidade):**
+```json
+"url": "https://servidor.com/arquivo.zip"
+```
 
 ---
 
-## 🔄 Como Fazer Atualizações
+## 🔄 Como o Fallback Funciona
 
-### Atualizar a Instância Completa
+```
+1. Launcher busca version.json:
+   → Tenta: craft.blocky.com.br/version.json
+   → Se falhar: marina.rodrigorocha.art.br/version.json
 
-1. Gere o novo `instance.zip` com todas as alterações
-2. Faça upload para `https://craft.blocky.com.br/launcher-assets/instance.zip`
-3. Edite `version.json`:
+2. Para cada download (instance, libraries, mods):
+   → Tenta URL[0] do array (principal)
+   → Se falhar: Tenta URL[1] (backup)
+   → Se falhar: Tenta URL[2]... etc
+```
+
+---
+
+## � Exemplo Completo para Deploy
+
+Crie o `version.json` em **ambos** os servidores:
+
+```json
+{
+    "launcher_version": "0.2.0",
+    "instance": {
+        "version": "2026.01.12",
+        "url": [
+            "https://craft.blocky.com.br/launcher-assets/instance.zip",
+            "https://marina.rodrigorocha.art.br/launcher-assets/instance.zip"
+        ]
+    },
+    "libraries": {
+        "version": "2026.01.12",
+        "url": [
+            "https://craft.blocky.com.br/launcher-assets/libraries.zip",
+            "https://marina.rodrigorocha.art.br/launcher-assets/libraries.zip"
+        ]
+    }
+}
+```
+
+---
+
+## 📝 Como Atualizar
+
+### Atualizar a Instância
+
+1. Faça upload do `instance.zip` para **ambos** os servidores
+2. Atualize o `version.json`:
    ```json
    "instance": {
-       "version": "2026.01.13",  ← MUDE ESTA VERSÃO
-       "url": "https://craft.blocky.com.br/launcher-assets/instance.zip"
+       "version": "2026.01.13",  ← MUDE A VERSÃO
+       "url": [...]
    }
    ```
 
 ### Atualizar as Bibliotecas
 
-1. Gere o novo `libraries.zip`
-2. Faça upload para `https://craft.blocky.com.br/launcher-assets/libraries.zip`
-3. Edite `version.json`:
+1. Faça upload do `libraries.zip` para **ambos** os servidores
+2. Atualize o `version.json`:
    ```json
    "libraries": {
-       "version": "2026.01.13",  ← MUDE ESTA VERSÃO
-       "url": "https://craft.blocky.com.br/launcher-assets/libraries.zip"
+       "version": "2026.01.13",  ← MUDE A VERSÃO
+       "url": [...]
    }
    ```
-
-### Atualizar Apenas Mods (Sem Rebuild Completo)
-
-1. Crie um zip contendo a pasta `mods/`:
-   ```
-   mods.zip
-   └── mods/
-       ├── mod1.jar
-       ├── mod2.jar
-       └── ...
-   ```
-2. Faça upload para `https://craft.blocky.com.br/launcher-assets/mods.zip`
-3. Edite `version.json`:
-   ```json
-   "mods": {
-       "version": "1.0.1",  ← MUDE ESTA VERSÃO
-       "url": "https://craft.blocky.com.br/launcher-assets/mods.zip",
-       "notes": "Adicionado mod XYZ, corrigido bug ABC"
-   }
-   ```
-
----
-
-## 🚀 Primeiro Deploy
-
-Para o primeiro deploy, crie o `version.json` inicial:
-
-```json
-{
-    "launcher_version": "0.1.0",
-    "instance": {
-        "version": "2026.01.12",
-        "url": "https://craft.blocky.com.br/launcher-assets/instance.zip"
-    },
-    "libraries": {
-        "version": "2026.01.12",
-        "url": "https://craft.blocky.com.br/launcher-assets/libraries.zip"
-    }
-}
-```
-
-> **Nota:** O bloco `mods` é opcional e pode ser omitido se você não precisar de atualizações separadas de mods.
-
----
-
-## 🔀 Sistema de Fallback
-
-O launcher automaticamente tenta múltiplas URLs se a principal falhar:
-
-```
-1. Tenta: https://craft.blocky.com.br/launcher-assets/version.json
-   ↓ Falha? (timeout 10s ou erro HTTP)
-2. Tenta: https://marina.rodrigorocha.art.br/launcher-assets/version.json
-   ↓ Sucesso? Usa esta URL para downloads também
-```
-
-Para manter o fallback funcionando, mantenha os mesmos arquivos em ambas as URLs:
-- `https://craft.blocky.com.br/launcher-assets/` (principal)
-- `https://marina.rodrigorocha.art.br/launcher-assets/` (backup)
 
 ---
 
 ## ✅ Checklist de Verificação
 
-Antes de publicar uma atualização, verifique:
-
-- [ ] Os arquivos `.zip` estão acessíveis publicamente (teste no navegador)
-- [ ] O `version.json` está com JSON válido (use um validador online se necessário)
-- [ ] A versão no JSON é DIFERENTE da versão anterior
-- [ ] O CORS está configurado no servidor (se necessário)
-- [ ] Os arquivos têm o Content-Type correto:
-  - `version.json` → `application/json`
-  - `*.zip` → `application/zip`
+- [ ] `version.json` está com JSON válido
+- [ ] A versão é **DIFERENTE** da anterior (para forçar update)
+- [ ] Os arquivos `.zip` estão em **todas** as URLs listadas
+- [ ] Teste acessar cada URL diretamente no navegador
 
 ---
 
 ## 🔍 Comportamento do Launcher
 
-Quando o usuário clica em "Jogar":
-
-1. Launcher busca `version.json` da VPS (tenta principal, depois fallback)
-2. Compara versões locais com remotas
-3. Se houver diferença:
-   - Baixa o(s) arquivo(s) atualizado(s)
-   - Extrai e substitui os arquivos locais
-   - Salva as novas versões localmente
-4. Continua com o lançamento do jogo
-
-As versões locais são salvas em:
-`~/.config/blockycraft-launcher/versions.json`
+1. Busca `version.json` (tenta principal, depois fallback)
+2. Compara versões locais vs remotas
+3. Para cada recurso desatualizado:
+   - Tenta baixar da primeira URL
+   - Se falhar, tenta a próxima URL do array
+   - Continua até sucesso ou todas falharem
+4. Extrai e atualiza
+5. Continua com o lançamento do jogo
 
 ---
 
 ## 🛠️ Troubleshooting
 
-### "Não está baixando a atualização"
-- Verifique se a versão no `version.json` é DIFERENTE da versão local
-- O launcher só baixa se as versões forem diferentes
+### "Update failed" / Download falhou
+- Verifique se o arquivo existe em **pelo menos uma** das URLs
+- Teste cada URL no navegador
 
-### "Erro de download"
-- Verifique se a URL está correta e acessível
-- Teste acessar a URL diretamente no navegador
-- Verifique se o servidor não está bloqueando requests do Electron (CORS)
-- O launcher tentará automaticamente o fallback se a URL principal falhar
+### "Versão não atualiza"
+- A versão local já é igual à remota
+- Mude a string de versão no `version.json`
 
-### "Atualização corrompida"
-- O arquivo zip pode estar corrompido
-- Regenere o zip e faça upload novamente
-
-### "Fallback não funciona"
-- Certifique-se de que os mesmos arquivos estão disponíveis em ambas as URLs
-- Verifique se o timeout de 10 segundos é suficiente para sua conexão
+### "Arquivo corrompido"
+- O .zip pode estar incompleto
+- Regenere e faça upload novamente

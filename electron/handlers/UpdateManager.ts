@@ -4,28 +4,28 @@ import fs from 'fs';
 import { createWriteStream } from 'fs';
 import AdmZip from 'adm-zip';
 
-// VPS Configuration - Primary and Fallback URLs
-const PRIMARY_BASE_URL = 'https://craft.blocky.com.br/launcher-assets';
-const FALLBACK_BASE_URL = 'https://marina.rodrigorocha.art.br/launcher-assets';
-
+// VPS Configuration - Primary and Fallback URLs for version.json
 const VERSION_JSON_URLS = [
-    `${PRIMARY_BASE_URL}/version.json`,
-    `${FALLBACK_BASE_URL}/version.json`
+    'https://craft.blocky.com.br/launcher-assets/version.json',
+    'https://marina.rodrigorocha.art.br/launcher-assets/version.json'
 ];
+
+// Type for URL that can be a single string or array of strings
+type UrlOrUrls = string | string[];
 
 interface RemoteVersionInfo {
     launcher_version: string;
     instance: {
         version: string;
-        url: string;
+        url: UrlOrUrls;  // Can be string or string[] for fallback URLs
     };
     libraries: {
         version: string;
-        url: string;
+        url: UrlOrUrls;  // Can be string or string[] for fallback URLs
     };
     mods?: {
         version: string;
-        url: string;
+        url: UrlOrUrls;  // Can be string or string[] for fallback URLs
         notes?: string;
     };
 }
@@ -49,13 +49,22 @@ export class UpdateManager {
     private localVersionsPath: string;
     private instanceDir: string;
     private librariesDir: string;
-    private activeBaseUrl: string = PRIMARY_BASE_URL;
 
     constructor() {
         this.dataPath = app.getPath('userData');
         this.localVersionsPath = path.join(this.dataPath, 'versions.json');
         this.instanceDir = path.join(this.dataPath, 'instances', 'default');
         this.librariesDir = path.join(this.instanceDir, 'libraries');
+    }
+
+    /**
+     * Normalizes URL to array format
+     */
+    private normalizeUrls(urlOrUrls: UrlOrUrls): string[] {
+        if (Array.isArray(urlOrUrls)) {
+            return urlOrUrls;
+        }
+        return [urlOrUrls];
     }
 
     /**
@@ -98,7 +107,7 @@ export class UpdateManager {
         for (const url of VERSION_JSON_URLS) {
             try {
                 console.log('[UpdateManager] Trying to fetch versions from:', url);
-                const response = await fetch(url, {
+                const response = await fetch(url, { 
                     signal: AbortSignal.timeout(10000) // 10 second timeout
                 });
 
@@ -110,11 +119,6 @@ export class UpdateManager {
                 console.log('[UpdateManager] Successfully fetched from:', url);
                 console.log('[UpdateManager] Remote versions:', data);
 
-                // Set active base URL based on which one worked
-                this.activeBaseUrl = url.includes('craft.blocky.com.br')
-                    ? PRIMARY_BASE_URL
-                    : FALLBACK_BASE_URL;
-
                 return data;
             } catch (e) {
                 console.warn(`[UpdateManager] Failed to fetch from ${url}:`, e);
@@ -124,13 +128,6 @@ export class UpdateManager {
 
         console.error('[UpdateManager] All version URLs failed');
         return null;
-    }
-
-    /**
-     * Gets the fallback URL for a given primary URL
-     */
-    private getFallbackUrl(primaryUrl: string): string {
-        return primaryUrl.replace(PRIMARY_BASE_URL, FALLBACK_BASE_URL);
     }
 
     /**
@@ -176,28 +173,25 @@ export class UpdateManager {
     }
 
     /**
-     * Downloads a file with progress reporting and fallback support
+     * Downloads a file with progress reporting and multi-URL fallback support
      */
     private async downloadFile(
-        url: string,
+        urlOrUrls: UrlOrUrls,
         destPath: string,
         progressCallback?: (status: string, percent: number) => void
     ): Promise<void> {
         const filename = path.basename(destPath);
         progressCallback?.(`Baixando ${filename}...`, 0);
 
-        // Build list of URLs to try (primary + fallback)
-        const urlsToTry = [url];
-        const fallbackUrl = this.getFallbackUrl(url);
-        if (fallbackUrl !== url) {
-            urlsToTry.push(fallbackUrl);
-        }
+        // Normalize to array of URLs
+        const urls = this.normalizeUrls(urlOrUrls);
 
         let lastError: Error | null = null;
 
-        for (const tryUrl of urlsToTry) {
+        for (let i = 0; i < urls.length; i++) {
+            const tryUrl = urls[i];
             try {
-                console.log(`[UpdateManager] Downloading ${tryUrl} to ${destPath}`);
+                console.log(`[UpdateManager] Downloading from URL ${i + 1}/${urls.length}: ${tryUrl}`);
 
                 const response = await fetch(tryUrl, {
                     signal: AbortSignal.timeout(60000) // 60 second timeout for downloads
@@ -253,7 +247,7 @@ export class UpdateManager {
         }
 
         // All URLs failed
-        throw lastError || new Error(`Failed to download ${filename} from all sources`);
+        throw lastError || new Error(`Failed to download ${filename} from all ${urls.length} sources`);
     }
 
     /**
@@ -279,7 +273,7 @@ export class UpdateManager {
         const tempZip = path.join(this.dataPath, 'temp_instance.zip');
 
         try {
-            // Download
+            // Download - now supports multiple URLs from version.json
             await this.downloadFile(remoteVersions.instance.url, tempZip, progressCallback);
 
             // Clear old instance (keep some user data)
@@ -333,7 +327,7 @@ export class UpdateManager {
         const tempZip = path.join(this.dataPath, 'temp_libraries.zip');
 
         try {
-            // Download
+            // Download - now supports multiple URLs from version.json
             await this.downloadFile(remoteVersions.libraries.url, tempZip, progressCallback);
 
             // Clear old libraries
@@ -388,7 +382,7 @@ export class UpdateManager {
         const modsDir = path.join(this.instanceDir, '.minecraft', 'mods');
 
         try {
-            // Download
+            // Download - now supports multiple URLs from version.json
             await this.downloadFile(remoteVersions.mods.url, tempZip, progressCallback);
 
             // Clear old mods
