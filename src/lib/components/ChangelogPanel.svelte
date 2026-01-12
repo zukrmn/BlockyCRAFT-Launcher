@@ -45,7 +45,7 @@
 
   .content h3 {
     font-size: 1.1rem;
-    color: var(--color-primary);
+    color: #e2e8f0;
     margin: 0 0 var(--spacing-sm) 0;
   }
 
