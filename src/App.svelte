@@ -5,7 +5,9 @@
   import ChangelogPanel from "./lib/components/ChangelogPanel.svelte";
   import DonatorsPanel from "./lib/components/DonatorsPanel.svelte";
   import LanguageToggle from "./lib/components/LanguageToggle.svelte";
+  import { i18n } from "./lib/stores/i18n.svelte";
   import "./styles/theme.css";
+
 
   // State
   let username = $state("");
@@ -39,15 +41,16 @@
     localStorage.setItem("username", username);
 
     isLaunching = true;
-    launchStatus = "Iniciando...";
+    launchStatus = i18n.t("status.launching");
     launchProgress = 0;
 
     const result = await ElectronService.launchGame(username);
     if (!result.success) {
       isLaunching = false;
-      alert("Erro ao iniciar: " + result.error);
+      alert(i18n.t("status.error") + result.error);
     }
   }
+
 </script>
 
 <main class="app-layout">

@@ -1,5 +1,7 @@
 <script lang="ts">
   import { ElectronService } from "../electron";
+  import { i18n } from "../stores/i18n.svelte";
+
 
   let {
     username = $bindable(""),
@@ -21,7 +23,7 @@
 <div class="control-bar">
   <!-- Donate Button -->
   <button class="btn-donate" onclick={handleDonate} disabled={isLaunching}>
-    Donate
+    {i18n.t("ui.donate")}
   </button>
 
   <!-- Username Input -->
@@ -29,7 +31,7 @@
     <input
       type="text"
       bind:value={username}
-      placeholder="Username"
+      placeholder={i18n.t("ui.username_placeholder")}
       onkeydown={onKey}
       disabled={isLaunching}
     />
@@ -44,7 +46,7 @@
     {#if isLaunching}
       ...
     {:else}
-      Play
+      {i18n.t("ui.play")}
     {/if}
   </button>
 </div>

@@ -1,20 +1,27 @@
 <script lang="ts">
-  let changelog = [
-    "Adicionado Chat de Voz por Proximidade",
-    "Novo Sistema de Skins (Mod Client-side)",
-    "Correção de bugs na renderização de chunks",
-    "Melhoria na estabilidade do servidor",
-    "Adicionado suporte a Wayland (Linux)"
+  import { i18n } from "../stores/i18n.svelte";
+
+  // Mock changelog data
+  const updates = [
+    { version: "1.0.0", date: "2024-05-20", title: "Lançamento Oficial" },
+    { version: "0.9.5", date: "2024-05-18", title: "Correções de bugs" },
+    { version: "0.9.0", date: "2024-05-15", title: "Novo sistema de login" },
   ];
 </script>
 
 <div class="changelog-panel">
-  <h3>Novidades</h3>
-  <ul>
-    {#each changelog as item}
-      <li>• {item}</li>
+  <h2>{i18n.t("ui.changelog")}</h2>
+  <div class="list">
+    {#each updates as update}
+      <div class="update-item">
+        <div class="update-header">
+          <span class="version">{update.version}</span>
+          <span class="date">{update.date}</span>
+        </div>
+        <div class="update-title">{update.title}</div>
+      </div>
     {/each}
-  </ul>
+  </div>
 </div>
 
 <style>
@@ -26,28 +33,12 @@
     height: 100%;
     overflow-y: auto;
   }
-
-  h3 {
+  h2 {
     margin: 0 0 var(--spacing-md) 0;
     font-size: 1rem;
     font-weight: 600;
-    color: var(--color-text-muted);
     text-transform: uppercase;
+    color: var(--color-primary);
     letter-spacing: 0.05em;
-  }
-
-  ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-sm);
-  }
-
-  li {
-    font-size: 0.9rem;
-    line-height: 1.4;
-    color: var(--color-text-main);
   }
 </style>

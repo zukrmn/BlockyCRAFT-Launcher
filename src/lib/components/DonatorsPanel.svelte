@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { i18n } from "../stores/i18n.svelte";
+
   // Mock data for now
   let donators = [
     { name: "Notch", uuid: "069a79f4-44e9-4726-a5be-fca90e38aaf5" },
@@ -11,7 +13,7 @@
 </script>
 
 <div class="donators-panel">
-  <h3>Apoiadores</h3>
+  <h3>{i18n.t("ui.donators")}</h3>
   <div class="grid">
     {#each donators as donor}
       <div class="donor-item" title={donor.name}>
