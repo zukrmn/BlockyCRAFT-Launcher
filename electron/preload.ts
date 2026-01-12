@@ -22,7 +22,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Invoke methods (request-response pattern)
   invoke: async (channel: string, data: unknown): Promise<unknown> => {
-    const validChannels = ['get-minecraft-path', 'get-java-version', 'launch-game', 'check-custom-instance', 'check-update-status', 'perform-update'];
+    const validChannels = ['get-minecraft-path', 'get-java-version', 'launch-game', 'check-custom-instance', 'check-update-status', 'perform-update', 'open-external'];
     if (validChannels.includes(channel)) {
       return ipcRenderer.invoke(channel, data);
     }
@@ -41,7 +41,8 @@ contextBridge.exposeInMainWorld('api', {
   },
   onError: (callback: (err: string) => void) => {
     ipcRenderer.on('launch-error', (_event, err) => callback(err));
-  }
+  },
+  openExternal: (url: string) => ipcRenderer.invoke('open-external', url)
 });
 
 // Type declarations for the exposed API
@@ -58,6 +59,7 @@ declare global {
       onProgress: (callback: (data: { type: string; current: number; total: number }) => void) => void;
       onLog: (callback: (data: string) => void) => void;
       onError: (callback: (err: string) => void) => void;
+      openExternal: (url: string) => Promise<void>;
     };
   }
 }

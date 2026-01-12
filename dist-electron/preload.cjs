@@ -18,7 +18,7 @@ import_electron.contextBridge.exposeInMainWorld("electronAPI", {
   },
   // Invoke methods (request-response pattern)
   invoke: async (channel, data) => {
-    const validChannels = ["get-minecraft-path", "get-java-version", "launch-game", "check-custom-instance", "check-update-status", "perform-update"];
+    const validChannels = ["get-minecraft-path", "get-java-version", "launch-game", "check-custom-instance", "check-update-status", "perform-update", "open-external"];
     if (validChannels.includes(channel)) {
       return import_electron.ipcRenderer.invoke(channel, data);
     }
@@ -35,6 +35,7 @@ import_electron.contextBridge.exposeInMainWorld("api", {
   },
   onError: (callback) => {
     import_electron.ipcRenderer.on("launch-error", (_event, err) => callback(err));
-  }
+  },
+  openExternal: (url) => import_electron.ipcRenderer.invoke("open-external", url)
 });
 //# sourceMappingURL=preload.cjs.map
