@@ -3,12 +3,13 @@
 
   // Mock data for now
   let donators = [
+    { name: "LimaooDoomer", uuid: "ec01c71e-3f62-421f-8255-0814467332d7" },
     { name: "Notch", uuid: "069a79f4-44e9-4726-a5be-fca90e38aaf5" },
     { name: "Jeb_", uuid: "853c80ef-3c37-49fd-aa49-938b674adae6" },
     { name: "Dinnerbone", uuid: "61699b2e-d327-4a01-9f1e-0ea8c3f06bc6" },
     { name: "Grumm", uuid: "977e69fb-0145-4dfd-b4bd-44c11466020c" },
     { name: "C418", uuid: "0b540250-59f9-4676-9ae5-917fa1d74659" },
-    { name: "Agnez", uuid: "f07a7576-9d32-47ef-b67f-94ad7d7210z" }, // Fake UUID but using name for API
+    { name: "Agnez", uuid: "f07a7576-9d32-47ef-b67f-94ad7d7210z" },
   ];
 </script>
 
@@ -49,7 +50,7 @@
 
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
     gap: var(--spacing-md);
   }
 
