@@ -354,52 +354,60 @@ export class GameHandler {
                         const legacyFabricRepo = 'https://repo.legacyfabric.net/repository/legacyfabric/';
 
                         // 0. Check for bundled libraries.zip and extract if needed
-                        let bundledLibsZip = path.resolve('libraries.zip');
+                        // Skip if UpdateManager already extracted libraries (check for v2 marker or existing maven structure)
+                        const markerV2 = path.join(librariesDir, '.bundled_extracted_v2');
+                        const markerV1 = path.join(librariesDir, '.bundled_extracted_v1');
+                        const asmExists = path.join(librariesDir, 'org', 'ow2', 'asm', 'asm', '9.7.1', 'asm-9.7.1.jar');
 
-                        // DOWNLOAD libraries.zip IF MISSING (VPS Support)
-                        if (!fs.existsSync(bundledLibsZip)) {
-                            console.log('libraries.zip not found locally. Attempting to download from VPS...');
-                            this.sendProgress(event.sender, 'Baixando bibliotecas do servidor...', 68);
+                        const librariesAlreadyExtracted = fs.existsSync(markerV2) || fs.existsSync(markerV1) || fs.existsSync(asmExists);
 
-                            const libsUrls = [
-                                'https://craft.blocky.com.br/launcher-assets/libraries.zip',
-                                'https://marina.rodrigorocha.art.br/launcher-assets/libraries.zip'
-                            ];
+                        if (!librariesAlreadyExtracted) {
+                            let bundledLibsZip = path.resolve('libraries.zip');
 
-                            let downloaded = false;
-                            for (const vpsUrl of libsUrls) {
-                                try {
-                                    console.log(`Trying to download libraries.zip from ${vpsUrl}...`);
-                                    await this.downloadFile(vpsUrl, path.dirname(bundledLibsZip), 'libraries.zip', event.sender);
-                                    downloaded = true;
-                                    break; // Success, exit loop
-                                } catch (e) {
-                                    console.warn(`Failed to download libraries.zip from ${vpsUrl}:`, e);
-                                    // Continue to next URL
+                            // DOWNLOAD libraries.zip IF MISSING (VPS Support - only if UpdateManager didn't handle it)
+                            if (!fs.existsSync(bundledLibsZip)) {
+                                console.log('libraries.zip not found locally. Attempting to download from VPS...');
+                                this.sendProgress(event.sender, 'Baixando bibliotecas do servidor...', 68);
+
+                                const libsUrls = [
+                                    'https://craft.blocky.com.br/launcher-assets/libraries.zip',
+                                    'https://marina.rodrigorocha.art.br/launcher-assets/libraries.zip'
+                                ];
+
+                                let downloaded = false;
+                                for (const vpsUrl of libsUrls) {
+                                    try {
+                                        console.log(`Trying to download libraries.zip from ${vpsUrl}...`);
+                                        await this.downloadFile(vpsUrl, path.dirname(bundledLibsZip), 'libraries.zip', event.sender);
+                                        downloaded = true;
+                                        break; // Success, exit loop
+                                    } catch (e) {
+                                        console.warn(`Failed to download libraries.zip from ${vpsUrl}:`, e);
+                                        // Continue to next URL
+                                    }
+                                }
+
+                                if (!downloaded) {
+                                    console.error('Failed to download libraries.zip from all sources. Game might crash if libraries are missing.');
                                 }
                             }
 
-                            if (!downloaded) {
-                                console.error('Failed to download libraries.zip from all sources. Game might crash if libraries are missing.');
-                            }
-                        }
-
-                        if (fs.existsSync(bundledLibsZip)) {
+                            if (fs.existsSync(bundledLibsZip)) {
                             // Extract if we haven't marked it as extracted
-                            const marker = path.join(librariesDir, '.bundled_extracted_v1');
-                            if (!fs.existsSync(marker)) {
                                 this.sendProgress(event.sender, 'Extraindo bibliotecas locais (libraries.zip)...', 72);
                                 console.log('Found libraries.zip, extracting...');
                                 try {
                                     if (!fs.existsSync(librariesDir)) fs.mkdirSync(librariesDir, { recursive: true });
                                     const zip = new AdmZip(bundledLibsZip);
                                     zip.extractAllTo(librariesDir, true);
-                                    fs.writeFileSync(marker, 'extracted');
+                                    fs.writeFileSync(markerV1, 'extracted');
                                     console.log('Libraries extracted successfully.');
                                 } catch (e) {
                                     console.error('Failed to extract libraries.zip:', e);
                                 }
                             }
+                        } else {
+                            console.log('[GameHandler] Libraries already extracted by UpdateManager, skipping legacy download');
                         }
 
                         for (const lib of fabricLibs) {
@@ -547,6 +555,12 @@ export class GameHandler {
                 '-Dfabric.gameJarPath=' + mcJarPath,
                 '-Dfabric.gameVersion=b1.7.3',
                 '-Dfabric.envType=client',
+                // Suppress SLF4J "no providers" warning
+                '-Dslf4j.internal.verbosity=ERROR',
+                // Disable legacy resource downloads from defunct S3 bucket
+                '-Dminecraft.resources.index=' + path.join(dotMinecraft, 'resources'),
+                '-Dminecraft.applet.TargetDirectory=' + dotMinecraft,
+                '-Dminecraft.applet.BaseURL=file:///',
                 '-cp', classpath.join(path.delimiter),
                 mainClass
             ];
@@ -585,8 +599,21 @@ export class GameHandler {
                 env: gameEnv
             });
 
+            // Filter patterns for known harmless messages
+            const suppressedPatterns = [
+                's3.amazonaws.com/MinecraftResources',
+                'Failed to add pack.mcmeta',
+                'Failed to add READ_ME_I_AM_VERY_IMPORTANT'
+            ];
+
             this.gameProcess.stdout.on('data', (data: any) => {
                 const log = data.toString();
+
+                // Skip suppressed messages
+                if (suppressedPatterns.some(pattern => log.includes(pattern))) {
+                    return;
+                }
+
                 console.log(`[MC]: ${log}`);
 
                 // Check for successful client startup/connection to switch UI
@@ -596,7 +623,14 @@ export class GameHandler {
             });
 
             this.gameProcess.stderr.on('data', (data: any) => {
-                console.error(`[MC-Err]: ${data}`);
+                const log = data.toString();
+
+                // Skip suppressed messages
+                if (suppressedPatterns.some(pattern => log.includes(pattern))) {
+                    return;
+                }
+
+                console.error(`[MC-Err]: ${log}`);
             });
 
             this.gameProcess.on('close', (code: any) => {

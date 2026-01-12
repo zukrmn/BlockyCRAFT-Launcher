@@ -145,6 +145,10 @@
     position: relative;
     padding-top: var(--spacing-md);
     border-top: 1px solid var(--color-border);
+    margin-left: calc(-1 * var(--spacing-lg));
+    margin-right: calc(-1 * var(--spacing-lg));
+    padding-left: var(--spacing-lg);
+    padding-right: var(--spacing-lg);
   }
 
 

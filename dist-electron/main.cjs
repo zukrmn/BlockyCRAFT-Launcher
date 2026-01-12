@@ -3541,44 +3541,49 @@ var GameHandler = class {
             const fabricBase = "https://maven.fabricmc.net/";
             const mavenCentral = "https://repo1.maven.org/maven2/";
             const legacyFabricRepo = "https://repo.legacyfabric.net/repository/legacyfabric/";
-            let bundledLibsZip = import_path3.default.resolve("libraries.zip");
-            if (!import_fs5.default.existsSync(bundledLibsZip)) {
-              console.log("libraries.zip not found locally. Attempting to download from VPS...");
-              this.sendProgress(event.sender, "Baixando bibliotecas do servidor...", 68);
-              const libsUrls = [
-                "https://craft.blocky.com.br/launcher-assets/libraries.zip",
-                "https://marina.rodrigorocha.art.br/launcher-assets/libraries.zip"
-              ];
-              let downloaded = false;
-              for (const vpsUrl of libsUrls) {
-                try {
-                  console.log(`Trying to download libraries.zip from ${vpsUrl}...`);
-                  await this.downloadFile(vpsUrl, import_path3.default.dirname(bundledLibsZip), "libraries.zip", event.sender);
-                  downloaded = true;
-                  break;
-                } catch (e) {
-                  console.warn(`Failed to download libraries.zip from ${vpsUrl}:`, e);
+            const markerV2 = import_path3.default.join(librariesDir, ".bundled_extracted_v2");
+            const markerV1 = import_path3.default.join(librariesDir, ".bundled_extracted_v1");
+            const asmExists = import_path3.default.join(librariesDir, "org", "ow2", "asm", "asm", "9.7.1", "asm-9.7.1.jar");
+            const librariesAlreadyExtracted = import_fs5.default.existsSync(markerV2) || import_fs5.default.existsSync(markerV1) || import_fs5.default.existsSync(asmExists);
+            if (!librariesAlreadyExtracted) {
+              let bundledLibsZip = import_path3.default.resolve("libraries.zip");
+              if (!import_fs5.default.existsSync(bundledLibsZip)) {
+                console.log("libraries.zip not found locally. Attempting to download from VPS...");
+                this.sendProgress(event.sender, "Baixando bibliotecas do servidor...", 68);
+                const libsUrls = [
+                  "https://craft.blocky.com.br/launcher-assets/libraries.zip",
+                  "https://marina.rodrigorocha.art.br/launcher-assets/libraries.zip"
+                ];
+                let downloaded = false;
+                for (const vpsUrl of libsUrls) {
+                  try {
+                    console.log(`Trying to download libraries.zip from ${vpsUrl}...`);
+                    await this.downloadFile(vpsUrl, import_path3.default.dirname(bundledLibsZip), "libraries.zip", event.sender);
+                    downloaded = true;
+                    break;
+                  } catch (e) {
+                    console.warn(`Failed to download libraries.zip from ${vpsUrl}:`, e);
+                  }
+                }
+                if (!downloaded) {
+                  console.error("Failed to download libraries.zip from all sources. Game might crash if libraries are missing.");
                 }
               }
-              if (!downloaded) {
-                console.error("Failed to download libraries.zip from all sources. Game might crash if libraries are missing.");
-              }
-            }
-            if (import_fs5.default.existsSync(bundledLibsZip)) {
-              const marker = import_path3.default.join(librariesDir, ".bundled_extracted_v1");
-              if (!import_fs5.default.existsSync(marker)) {
+              if (import_fs5.default.existsSync(bundledLibsZip)) {
                 this.sendProgress(event.sender, "Extraindo bibliotecas locais (libraries.zip)...", 72);
                 console.log("Found libraries.zip, extracting...");
                 try {
                   if (!import_fs5.default.existsSync(librariesDir)) import_fs5.default.mkdirSync(librariesDir, { recursive: true });
                   const zip = new import_adm_zip3.default(bundledLibsZip);
                   zip.extractAllTo(librariesDir, true);
-                  import_fs5.default.writeFileSync(marker, "extracted");
+                  import_fs5.default.writeFileSync(markerV1, "extracted");
                   console.log("Libraries extracted successfully.");
                 } catch (e) {
                   console.error("Failed to extract libraries.zip:", e);
                 }
               }
+            } else {
+              console.log("[GameHandler] Libraries already extracted by UpdateManager, skipping legacy download");
             }
             for (const lib of fabricLibs) {
               const pathStr = `${lib.group.replace(/\./g, "/")}/${lib.artifact}/${lib.version}/${lib.artifact}-${lib.version}.jar`;
@@ -3672,6 +3677,12 @@ var GameHandler = class {
         "-Dfabric.gameJarPath=" + mcJarPath,
         "-Dfabric.gameVersion=b1.7.3",
         "-Dfabric.envType=client",
+        // Suppress SLF4J "no providers" warning
+        "-Dslf4j.internal.verbosity=ERROR",
+        // Disable legacy resource downloads from defunct S3 bucket
+        "-Dminecraft.resources.index=" + import_path3.default.join(dotMinecraft, "resources"),
+        "-Dminecraft.applet.TargetDirectory=" + dotMinecraft,
+        "-Dminecraft.applet.BaseURL=file:///",
         "-cp",
         classpath.join(import_path3.default.delimiter),
         mainClass
@@ -3697,15 +3708,27 @@ var GameHandler = class {
         cwd: dotMinecraft,
         env: gameEnv
       });
+      const suppressedPatterns = [
+        "s3.amazonaws.com/MinecraftResources",
+        "Failed to add pack.mcmeta",
+        "Failed to add READ_ME_I_AM_VERY_IMPORTANT"
+      ];
       this.gameProcess.stdout.on("data", (data) => {
         const log = data.toString();
+        if (suppressedPatterns.some((pattern) => log.includes(pattern))) {
+          return;
+        }
         console.log(`[MC]: ${log}`);
         if (log.includes("Connecting to")) {
           event.sender.send("game-connected");
         }
       });
       this.gameProcess.stderr.on("data", (data) => {
-        console.error(`[MC-Err]: ${data}`);
+        const log = data.toString();
+        if (suppressedPatterns.some((pattern) => log.includes(pattern))) {
+          return;
+        }
+        console.error(`[MC-Err]: ${log}`);
       });
       this.gameProcess.on("close", (code) => {
         console.log(`Minecraft exited with code ${code}`);
