@@ -256,6 +256,20 @@ export class UpdateManager {
     private extractZip(zipPath: string, destDir: string): void {
         console.log(`[UpdateManager] Extracting ${zipPath} to ${destDir}`);
 
+        // Validate ZIP file before extraction
+        if (!fs.existsSync(zipPath)) {
+            throw new Error(`ZIP file not found: ${zipPath}`);
+        }
+
+        const fileBuffer = fs.readFileSync(zipPath);
+
+        // Check ZIP magic bytes (PK\x03\x04)
+        if (fileBuffer.length < 4 || fileBuffer[0] !== 0x50 || fileBuffer[1] !== 0x4B) {
+            // Not a valid ZIP, log first bytes for debugging
+            console.error(`[UpdateManager] Invalid ZIP file. First bytes: ${fileBuffer.slice(0, 20).toString('hex')}`);
+            throw new Error(`Invalid ZIP file: ${zipPath}. The download may have failed or returned an error page.`);
+        }
+
         fs.mkdirSync(destDir, { recursive: true });
         const zip = new AdmZip(zipPath);
         zip.extractAllTo(destDir, true);
