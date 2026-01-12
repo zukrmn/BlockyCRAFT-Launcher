@@ -3372,31 +3372,15 @@ var GameHandler = class {
     }
   }
   async checkAndExtractInstance() {
-    const zipName = "allfrominstance.zip";
-    const instanceZipPath = import_path3.default.resolve(zipName);
     const instanceDir = import_path3.default.join(import_electron3.app.getPath("userData"), "instances", "default");
-    if (import_fs5.default.existsSync(instanceZipPath)) {
-      console.log(`Found ${zipName}, forcing extraction to reset instance...`);
-      try {
-        safeExtractZip(instanceZipPath, instanceDir);
-        const entries = import_fs5.default.readdirSync(instanceDir);
-        const topLevelDir = entries.find((e) => import_fs5.default.statSync(import_path3.default.join(instanceDir, e)).isDirectory() && e.startsWith("Beta Unleashed"));
-        if (topLevelDir) {
-          const topPath = import_path3.default.join(instanceDir, topLevelDir);
-          console.log(`Moving files from ${topPath} to ${instanceDir}...`);
-          await execAsync2(`cp -a "${topPath}/." "${instanceDir}/"`);
-        }
-        console.log("Extraction and merge complete.");
-        import_fs5.default.renameSync(instanceZipPath, instanceZipPath + ".extracted");
-        return instanceDir;
-      } catch (e) {
-        console.error("Failed to extract instance:", e);
-        return null;
-      }
+    const dataDir = import_electron3.app.getPath("userData");
+    if (import_fs5.default.existsSync(import_path3.default.join(instanceDir, "instance.cfg"))) {
+      console.log("Instance already exists, skipping extraction.");
+      return instanceDir;
     }
-    const oldZip = import_path3.default.resolve("instance.zip");
-    if (!import_fs5.default.existsSync(oldZip) && !import_fs5.default.existsSync(import_path3.default.join(instanceDir, "instance.cfg"))) {
-      console.log("instance.zip not found locally. Attempting to download from VPS...");
+    const instanceZip = import_path3.default.join(dataDir, "instance.zip");
+    if (!import_fs5.default.existsSync(instanceZip)) {
+      console.log("instance.zip not found. Attempting to download from VPS...");
       const vpsUrls = [
         "https://craft.blocky.com.br/launcher-assets/instance.zip",
         "https://marina.rodrigorocha.art.br/launcher-assets/instance.zip"
@@ -3407,7 +3391,7 @@ var GameHandler = class {
           const response = await fetch(vpsUrl, { signal: AbortSignal.timeout(3e4) });
           if (response.ok) {
             const arrayBuffer = await response.arrayBuffer();
-            import_fs5.default.writeFileSync(oldZip, Buffer.from(arrayBuffer));
+            import_fs5.default.writeFileSync(instanceZip, Buffer.from(arrayBuffer));
             console.log("instance.zip downloaded successfully from", vpsUrl);
             break;
           }
@@ -3416,11 +3400,9 @@ var GameHandler = class {
         }
       }
     }
-    if (import_fs5.default.existsSync(import_path3.default.join(instanceDir, "instance.cfg"))) {
-      return instanceDir;
-    }
-    if (import_fs5.default.existsSync(oldZip)) {
-      safeExtractZip(oldZip, instanceDir);
+    if (import_fs5.default.existsSync(instanceZip) && validateZipFile(instanceZip)) {
+      console.log("Extracting instance.zip...");
+      safeExtractZip(instanceZip, instanceDir);
       return instanceDir;
     }
     return null;
@@ -3564,7 +3546,7 @@ var GameHandler = class {
             const asmExists = import_path3.default.join(librariesDir, "org", "ow2", "asm", "asm", "9.7.1", "asm-9.7.1.jar");
             const librariesAlreadyExtracted = import_fs5.default.existsSync(markerV2) || import_fs5.default.existsSync(markerV1) || import_fs5.default.existsSync(asmExists);
             if (!librariesAlreadyExtracted) {
-              let bundledLibsZip = import_path3.default.resolve("libraries.zip");
+              let bundledLibsZip = import_path3.default.join(import_electron3.app.getPath("userData"), "libraries.zip");
               if (!import_fs5.default.existsSync(bundledLibsZip)) {
                 console.log("libraries.zip not found locally. Attempting to download from VPS...");
                 this.sendProgress(event.sender, "Baixando bibliotecas do servidor...", 68);
