@@ -12,11 +12,22 @@ const execAsync = promisify(exec);
 // Beta 1.7.3 Configuration
 const VERSION_MANIFEST_URL = 'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json';
 const TARGET_VERSION_ID = 'b1.7.3';
+const VPS_BASE_URL = 'http://185.100.215.195/downloads';
 
 interface GameOptions {
     username: string;
     gamePath?: string;
     javaPath?: string;
+}
+
+function validateGameOptions(options: GameOptions) {
+    if (!options.username || typeof options.username !== 'string' || options.username.trim().length === 0) {
+        throw new Error('Username is invalid or empty');
+    }
+    // Simple regex for valid Minecraft usernames (lenient approach for offline/cracked but safer than nothing)
+    if (!/^[a-zA-Z0-9_]{3,16}$/.test(options.username)) {
+        throw new Error('Username must be 3-16 characters, alphanumeric/underscore only.');
+    }
 }
 
 export class GameHandler {
@@ -114,7 +125,7 @@ export class GameHandler {
                 // But actually, verify if we can access the downloading logic properly.
                 // We'll use a simple fetch/fs logic here to avoid complicating signatures across the class
                 console.log('Downloading instance.zip from VPS...');
-                const vpsUrl = 'http://185.100.215.195/downloads/instance.zip';
+                const vpsUrl = `${VPS_BASE_URL}/instance.zip`;
 
                 const response = await fetch(vpsUrl);
                 if (response.ok) {
@@ -197,6 +208,13 @@ export class GameHandler {
 
     private async handleLaunch(event: IpcMainInvokeEvent, options: GameOptions) {
         console.log('Requesting game launch...', options);
+
+        try {
+            validateGameOptions(options);
+        } catch (e: any) {
+            console.error('Validation failed:', e);
+            return { success: false, error: e.message };
+        }
 
         // 1. Check & Extract Custom Instance
         const instanceDir = await this.checkAndExtractInstance();
@@ -324,7 +342,7 @@ export class GameHandler {
                             console.log('libraries.zip not found locally. Attempting to download from VPS...');
                             this.sendProgress(event.sender, 'Baixando bibliotecas do servidor...', 68);
                             try {
-                                const vpsUrl = 'http://185.100.215.195/downloads/libraries.zip';
+                                const vpsUrl = `${VPS_BASE_URL}/libraries.zip`;
                                 await this.downloadFile(vpsUrl, path.dirname(bundledLibsZip), 'libraries.zip', event.sender);
                             } catch (e) {
                                 console.error('Failed to download libraries.zip from VPS. Trying to proceed without it... (Might crash if offline)', e);
@@ -518,6 +536,14 @@ export class GameHandler {
             console.log('Spawning java:', this.javaPath);
             console.log('Args:', launchArgs);
 
+            // Only check file existence if it looks like a path (contains separators) or is absolute
+            // If it's just "java", we assume the system path resolution works (verified by JavaManager)
+            if (this.javaPath !== 'java' && (path.isAbsolute(this.javaPath) || this.javaPath.includes(path.sep))) {
+                if (!fs.existsSync(this.javaPath)) {
+                    throw new Error(`Java executable not found at: ${this.javaPath}`);
+                }
+            }
+
             const gameProcess = spawn(this.javaPath, launchArgs, {
                 cwd: dotMinecraft,
                 env: process.env
@@ -558,7 +584,7 @@ export class GameHandler {
                 localVersion = fs.readFileSync(localVersionPath, 'utf-8').trim();
             }
 
-            const remoteUrl = 'http://185.100.215.195/downloads/version.json';
+            const remoteUrl = `${VPS_BASE_URL}/version.json`;
             const response = await fetch(remoteUrl);
             if (!response.ok) return { available: false, error: 'Failed to fetch version' };
 
@@ -578,7 +604,7 @@ export class GameHandler {
     private async handlePerformUpdate(event: IpcMainInvokeEvent) {
         try {
             this.sendProgress(event.sender, 'Iniciando atualização...', 0);
-            const remoteUrl = 'http://185.100.215.195/downloads/version.json';
+            const remoteUrl = `${VPS_BASE_URL}/version.json`;
             const response = await fetch(remoteUrl);
             const remoteData = await response.json() as any;
 

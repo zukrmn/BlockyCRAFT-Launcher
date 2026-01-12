@@ -5,19 +5,31 @@ import path from 'node:path';
 app.commandLine.appendSwitch('no-sandbox');
 app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
 
-import { GameHandler } from './handlers/GameHandler.js';
-const gameHandler = new GameHandler();
-gameHandler.init();
-
-console.log('=== BlockyCRAFT Launcher Starting ===');
-
-console.log('Electron version:', process.versions.electron);
+import fs from 'node:fs';
 
 let mainWindow: BrowserWindow | null = null;
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL'];
 
+// Error checks before doing anything
+function validateStartupEnvironment() {
+    const preloadPath = path.join(__dirname, 'preload.cjs');
+    if (!fs.existsSync(preloadPath)) {
+        console.error(`CRITICAL: Preload script not found at ${preloadPath}`);
+        // In production, this should probably show a dialog before quitting
+        if (app.isReady()) {
+            const { dialog } = require('electron');
+            dialog.showErrorBox('Startup Error', 'Essential application files (preload script) are missing. Please reinstall the application.');
+            app.quit();
+        }
+        throw new Error('Preload script missing');
+    }
+}
+
 function createWindow(): void {
     console.log('Creating main window...');
+
+    validateStartupEnvironment();
+
     mainWindow = new BrowserWindow({
         width: 900,
         height: 600,
@@ -32,11 +44,15 @@ function createWindow(): void {
             sandbox: false,
         },
         backgroundColor: '#0f0f0f',
-        show: true,
-        autoHideMenuBar: true, // Hide menu bar
+        show: false, // Don't show until ready-to-show
+        autoHideMenuBar: true, 
     });
 
-    mainWindow.setMenu(null); // Explicitly remove menu
+    mainWindow.setMenu(null);
+
+    mainWindow.once('ready-to-show', () => {
+        mainWindow?.show();
+    });
 
     console.log('Window created, loading content...');
 
@@ -44,6 +60,10 @@ function createWindow(): void {
         mainWindow.loadURL(VITE_DEV_SERVER_URL);
     } else {
         const filePath = path.join(__dirname, '../dist/index.html');
+        if (!fs.existsSync(filePath)) {
+            console.error(`CRITICAL: Index file not found at ${filePath}`);
+            return;
+        }
         mainWindow.loadFile(filePath);
     }
 
@@ -59,8 +79,6 @@ function createWindow(): void {
         console.error('Create Window: render-process-gone', details);
     });
 
-
-
     mainWindow.webContents.on('unresponsive', () => {
         console.error('Create Window: unresponsive');
     });
@@ -70,8 +88,25 @@ function createWindow(): void {
     });
 }
 
+async function initApp() {
+    try {
+        console.log('Initializing Application...');
+        const { GameHandler } = await import('./handlers/GameHandler.js');
+        const gameHandler = new GameHandler();
+
+        // Init handler
+        gameHandler.init();
+        console.log('GameHandler initialized.');
+
+        createWindow();
+    } catch (error) {
+        console.error('Failed to initialize application:', error);
+        app.quit();
+    }
+}
+
 app.whenReady().then(() => {
-    createWindow();
+    initApp();
 });
 
 app.on('window-all-closed', () => {
