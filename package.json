@@ -52,6 +52,7 @@
     "wait-on": "^9.0.3"
   },
   "dependencies": {
-    "adm-zip": "^0.5.16"
+    "adm-zip": "^0.5.16",
+    "lucide-svelte": "^0.562.0"
   }
 }
