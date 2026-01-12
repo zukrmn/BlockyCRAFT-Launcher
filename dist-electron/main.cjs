@@ -3126,6 +3126,14 @@ var UpdateManager = class {
    */
   extractZip(zipPath, destDir) {
     console.log(`[UpdateManager] Extracting ${zipPath} to ${destDir}`);
+    if (!import_fs3.default.existsSync(zipPath)) {
+      throw new Error(`ZIP file not found: ${zipPath}`);
+    }
+    const fileBuffer = import_fs3.default.readFileSync(zipPath);
+    if (fileBuffer.length < 4 || fileBuffer[0] !== 80 || fileBuffer[1] !== 75) {
+      console.error(`[UpdateManager] Invalid ZIP file. First bytes: ${fileBuffer.slice(0, 20).toString("hex")}`);
+      throw new Error(`Invalid ZIP file: ${zipPath}. The download may have failed or returned an error page.`);
+    }
     import_fs3.default.mkdirSync(destDir, { recursive: true });
     const zip = new import_adm_zip2.default(zipPath);
     zip.extractAllTo(destDir, true);
@@ -3298,6 +3306,20 @@ var UpdateManager = class {
 
 // electron/handlers/GameHandler.ts
 var execAsync2 = (0, import_util2.promisify)(import_child_process2.exec);
+function validateZipFile(zipPath) {
+  if (!import_fs5.default.existsSync(zipPath)) return false;
+  const buffer = import_fs5.default.readFileSync(zipPath);
+  return buffer.length >= 4 && buffer[0] === 80 && buffer[1] === 75;
+}
+function safeExtractZip(zipPath, destDir) {
+  if (!validateZipFile(zipPath)) {
+    const buffer = import_fs5.default.existsSync(zipPath) ? import_fs5.default.readFileSync(zipPath) : Buffer.alloc(0);
+    console.error(`[GameHandler] Invalid ZIP file: ${zipPath}. First bytes: ${buffer.slice(0, 20).toString("hex")}`);
+    throw new Error(`Invalid ZIP file. The download may have failed.`);
+  }
+  const zip = new import_adm_zip3.default(zipPath);
+  zip.extractAllTo(destDir, true);
+}
 var VERSION_MANIFEST_URL = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
 var TARGET_VERSION_ID = "b1.7.3";
 var GameHandler = class {
@@ -3356,9 +3378,7 @@ var GameHandler = class {
     if (import_fs5.default.existsSync(instanceZipPath)) {
       console.log(`Found ${zipName}, forcing extraction to reset instance...`);
       try {
-        const zip = new import_adm_zip3.default(instanceZipPath);
-        import_fs5.default.mkdirSync(instanceDir, { recursive: true });
-        zip.extractAllTo(instanceDir, true);
+        safeExtractZip(instanceZipPath, instanceDir);
         const entries = import_fs5.default.readdirSync(instanceDir);
         const topLevelDir = entries.find((e) => import_fs5.default.statSync(import_path3.default.join(instanceDir, e)).isDirectory() && e.startsWith("Beta Unleashed"));
         if (topLevelDir) {
@@ -3400,9 +3420,7 @@ var GameHandler = class {
       return instanceDir;
     }
     if (import_fs5.default.existsSync(oldZip)) {
-      const zip = new import_adm_zip3.default(oldZip);
-      import_fs5.default.mkdirSync(instanceDir, { recursive: true });
-      zip.extractAllTo(instanceDir, true);
+      safeExtractZip(oldZip, instanceDir);
       return instanceDir;
     }
     return null;
@@ -3574,8 +3592,7 @@ var GameHandler = class {
                 console.log("Found libraries.zip, extracting...");
                 try {
                   if (!import_fs5.default.existsSync(librariesDir)) import_fs5.default.mkdirSync(librariesDir, { recursive: true });
-                  const zip = new import_adm_zip3.default(bundledLibsZip);
-                  zip.extractAllTo(librariesDir, true);
+                  safeExtractZip(bundledLibsZip, librariesDir);
                   import_fs5.default.writeFileSync(markerV1, "extracted");
                   console.log("Libraries extracted successfully.");
                 } catch (e) {
@@ -3633,8 +3650,7 @@ var GameHandler = class {
               else if (import_fs5.default.existsSync(mavenDirect)) sourceZip = mavenDirect;
               if (sourceZip) {
                 console.log(`[Cache] Found native library locally: ${filename}`);
-                const zip2 = new import_adm_zip3.default(sourceZip);
-                zip2.extractAllTo(nativesDir, true);
+                safeExtractZip(sourceZip, nativesDir);
                 continue;
               }
               let url = legacyFabricRepo + pathStr;
@@ -3642,8 +3658,7 @@ var GameHandler = class {
                 url = mavenCentral + pathStr;
               }
               const tempPath = await this.downloadFile(url, import_path3.default.join(gameRoot, "temp_natives"), filename, event.sender);
-              const zip = new import_adm_zip3.default(tempPath);
-              zip.extractAllTo(nativesDir, true);
+              safeExtractZip(tempPath, nativesDir);
             }
             const loaderUrl = "https://maven.fabricmc.net/net/fabricmc/fabric-loader/0.16.7/fabric-loader-0.16.7.jar";
             const loaderPath = await this.downloadFile(loaderUrl, librariesDir, "fabric-loader-0.16.7.jar", event.sender);

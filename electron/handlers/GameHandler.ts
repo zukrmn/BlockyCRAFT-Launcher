@@ -10,6 +10,29 @@ import { UpdateManager } from './UpdateManager.js';
 
 const execAsync = promisify(exec);
 
+/**
+ * Validates that a file is a valid ZIP before extraction
+ */
+function validateZipFile(zipPath: string): boolean {
+    if (!fs.existsSync(zipPath)) return false;
+    const buffer = fs.readFileSync(zipPath);
+    // Check ZIP magic bytes (PK\x03\x04)
+    return buffer.length >= 4 && buffer[0] === 0x50 && buffer[1] === 0x4B;
+}
+
+/**
+ * Safely extract ZIP with validation
+ */
+function safeExtractZip(zipPath: string, destDir: string): void {
+    if (!validateZipFile(zipPath)) {
+        const buffer = fs.existsSync(zipPath) ? fs.readFileSync(zipPath) : Buffer.alloc(0);
+        console.error(`[GameHandler] Invalid ZIP file: ${zipPath}. First bytes: ${buffer.slice(0, 20).toString('hex')}`);
+        throw new Error(`Invalid ZIP file. The download may have failed.`);
+    }
+    const zip = new AdmZip(zipPath);
+    zip.extractAllTo(destDir, true);
+}
+
 // Beta 1.7.3 Configuration
 const VERSION_MANIFEST_URL = 'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json';
 const TARGET_VERSION_ID = 'b1.7.3';
@@ -85,13 +108,7 @@ export class GameHandler {
         if (fs.existsSync(instanceZipPath)) {
             console.log(`Found ${zipName}, forcing extraction to reset instance...`);
             try {
-                const zip = new AdmZip(instanceZipPath);
-                fs.mkdirSync(instanceDir, { recursive: true });
-                // We need to extract contents. 
-                // The zip has a top-level folder 'Beta Unleashed...'. We want to strip it?
-                // AdmZip extractAllTo doesn't strip.
-                // We will extract to instanceDir. 
-                zip.extractAllTo(instanceDir, true);
+                safeExtractZip(instanceZipPath, instanceDir);
 
                 // Now we need to move the contents of the top-level folder to instanceDir if it exists
                 const entries = fs.readdirSync(instanceDir);
@@ -151,9 +168,7 @@ export class GameHandler {
         }
         if (fs.existsSync(oldZip)) {
             // ... existing extraction logic ...
-            const zip = new AdmZip(oldZip);
-            fs.mkdirSync(instanceDir, { recursive: true });
-            zip.extractAllTo(instanceDir, true);
+            safeExtractZip(oldZip, instanceDir);
             return instanceDir;
         }
 
@@ -398,8 +413,7 @@ export class GameHandler {
                                 console.log('Found libraries.zip, extracting...');
                                 try {
                                     if (!fs.existsSync(librariesDir)) fs.mkdirSync(librariesDir, { recursive: true });
-                                    const zip = new AdmZip(bundledLibsZip);
-                                    zip.extractAllTo(librariesDir, true);
+                                    safeExtractZip(bundledLibsZip, librariesDir);
                                     fs.writeFileSync(markerV1, 'extracted');
                                     console.log('Libraries extracted successfully.');
                                 } catch (e) {
@@ -482,8 +496,7 @@ export class GameHandler {
 
                             if (sourceZip) {
                                 console.log(`[Cache] Found native library locally: ${filename}`);
-                                const zip = new AdmZip(sourceZip);
-                                zip.extractAllTo(nativesDir, true);
+                                safeExtractZip(sourceZip, nativesDir);
                                 continue;
                             }
 
@@ -497,8 +510,7 @@ export class GameHandler {
                             const tempPath = await this.downloadFile(url, path.join(gameRoot, 'temp_natives'), filename, event.sender);
 
                             // Extract to nativesDir
-                            const zip = new AdmZip(tempPath);
-                            zip.extractAllTo(nativesDir, true);
+                            safeExtractZip(tempPath, nativesDir);
                         }
 
                         // Download Fabric Loader (0.16.7)
