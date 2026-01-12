@@ -2,6 +2,7 @@ export interface ElectronAPI {
     send: (channel: string, data: any) => void;
     receive: (channel: string, callback: (...args: any[]) => void) => void;
     invoke: (channel: string, data: any) => Promise<any>;
+    openExternal?: (url: string) => Promise<void>;
     platform?: string;
 }
 
@@ -33,7 +34,24 @@ export const ElectronService = {
         if (!electron) return { success: true };
         return electron.invoke('perform-update', null);
     },
-    
+
+    async openExternal(url: string): Promise<void> {
+        if (!electron) {
+            console.warn('[Mock] openExternal called with:', url);
+            // Fallback for mock environment, e.g., open in new tab if not Electron
+            if (typeof window !== 'undefined') {
+                window.open(url, '_blank');
+            }
+            return;
+        }
+        // Check if openExternal is a direct method on electronAPI (newer bridge)
+        if (electron.openExternal) {
+            return electron.openExternal(url);
+        }
+        // Fallback to invoke if openExternal is not a direct method (older bridge)
+        return electron.invoke('open-external', url) as Promise<void>;
+    },
+
     async checkCustomInstance(): Promise<boolean> {
         if (!electron) return false;
         return electron.invoke('check-custom-instance', null);
@@ -52,6 +70,23 @@ export const ElectronService = {
                 callback(`Mocking download... ${p}%`, p);
                 if (p >= 100) clearInterval(interval);
             }, 200);
+        }
+    },
+
+    async killGame(): Promise<{ success: boolean; error?: string }> {
+        if (!electron) return { success: true };
+        return electron.invoke('kill-game', null);
+    },
+
+    onGameClosed(callback: (code: number) => void) {
+        if (electron) {
+            electron.receive('game-closed', callback);
+        }
+    },
+
+    onGameConnected(callback: () => void) {
+        if (electron) {
+            electron.receive('game-connected', callback);
         }
     }
 };

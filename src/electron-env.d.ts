@@ -2,6 +2,7 @@ export interface ElectronAPI {
     send: (channel: string, data: any) => void;
     receive: (channel: string, callback: (...args: any[]) => void) => void;
     invoke: (channel: string, data: any) => Promise<any>;
+    openExternal?(url: string): Promise<void>;
     platform?: string;
 }
 export declare const ElectronService: {

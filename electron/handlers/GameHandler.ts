@@ -23,6 +23,7 @@ export class GameHandler {
     private gamePath: string;
     private javaPath: string;
     private javaManager: JavaManager;
+    private gameProcess: any = null; // ChildProcess type but avoiding import issues for now if needed, or better explicit.
 
     constructor() {
         this.gamePath = path.join(app.getPath('userData'), 'gamedata');
@@ -33,6 +34,16 @@ export class GameHandler {
     public init() {
         ipcMain.handle('launch-game', async (event, options: GameOptions) => {
             return this.handleLaunch(event, options);
+        });
+
+        ipcMain.handle('kill-game', async () => {
+            if (this.gameProcess) {
+                console.log('Killing game process...');
+                this.gameProcess.kill();
+                this.gameProcess = null;
+                return { success: true };
+            }
+            return { success: false, error: 'No game running' };
         });
 
         ipcMain.handle('check-custom-instance', async () => {
@@ -114,7 +125,7 @@ export class GameHandler {
                 // But actually, verify if we can access the downloading logic properly.
                 // We'll use a simple fetch/fs logic here to avoid complicating signatures across the class
                 console.log('Downloading instance.zip from VPS...');
-                const vpsUrl = 'http://185.100.215.195/downloads/instance.zip';
+                const vpsUrl = 'https://marina.rodrigorocha.art.br/launcher-assets/instance.zip';
 
                 const response = await fetch(vpsUrl);
                 if (response.ok) {
@@ -324,7 +335,7 @@ export class GameHandler {
                             console.log('libraries.zip not found locally. Attempting to download from VPS...');
                             this.sendProgress(event.sender, 'Baixando bibliotecas do servidor...', 68);
                             try {
-                                const vpsUrl = 'http://185.100.215.195/downloads/libraries.zip';
+                                const vpsUrl = 'https://marina.rodrigorocha.art.br/launcher-assets/libraries.zip';
                                 await this.downloadFile(vpsUrl, path.dirname(bundledLibsZip), 'libraries.zip', event.sender);
                             } catch (e) {
                                 console.error('Failed to download libraries.zip from VPS. Trying to proceed without it... (Might crash if offline)', e);
@@ -518,22 +529,39 @@ export class GameHandler {
             console.log('Spawning java:', this.javaPath);
             console.log('Args:', launchArgs);
 
-            const gameProcess = spawn(this.javaPath, launchArgs, {
+            // Configure OpenAL Soft for better Linux audio compatibility
+            const gameEnv = {
+                ...process.env,
+                // Increase OpenAL buffer size to prevent timing warnings
+                ALSOFT_CONF: 'period_size=2048',
+                // Prefer PulseAudio/PipeWire backend
+                ALSOFT_DRIVERS: 'pulse,alsa,oss',
+            };
+
+            this.gameProcess = spawn(this.javaPath, launchArgs, {
                 cwd: dotMinecraft,
-                env: process.env
+                env: gameEnv
             });
 
-            gameProcess.stdout.on('data', (data) => {
-                console.log(`[MC]: ${data}`);
+            this.gameProcess.stdout.on('data', (data: any) => {
+                const log = data.toString();
+                console.log(`[MC]: ${log}`);
+
+                // Check for successful client startup/connection to switch UI
+                if (log.includes('Connecting to')) {
+                    event.sender.send('game-connected');
+                }
             });
 
-            gameProcess.stderr.on('data', (data) => {
+            this.gameProcess.stderr.on('data', (data: any) => {
                 console.error(`[MC-Err]: ${data}`);
             });
 
-            gameProcess.on('close', (code) => {
+            this.gameProcess.on('close', (code: any) => {
                 console.log(`Minecraft exited with code ${code}`);
                 this.sendProgress(event.sender, 'Jogo fechado', 100);
+                this.gameProcess = null;
+                event.sender.send('game-closed', code);
             });
 
             return { success: true };

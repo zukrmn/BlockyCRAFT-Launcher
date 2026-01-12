@@ -35,3 +35,6 @@ temp_natives/
 temp_extract/
 core
 
+# Log
+LOG.md  
+

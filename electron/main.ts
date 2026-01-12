@@ -3,9 +3,7 @@ import path from 'node:path';
 
 // Add command line switches before app is ready
 app.commandLine.appendSwitch('no-sandbox');
-app.commandLine.appendSwitch('disable-gpu');
-app.commandLine.appendSwitch('disable-software-rasterizer');
-app.commandLine.appendSwitch('disable-dev-shm-usage');
+app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
 
 import { GameHandler } from './handlers/GameHandler.js';
 const gameHandler = new GameHandler();
@@ -39,6 +37,26 @@ function createWindow(): void {
     });
 
     mainWindow.setMenu(null); // Explicitly remove menu
+
+    // Open external links in browser (Changed to internal window per user request)
+    ipcMain.handle('open-external', async (event, url) => {
+        console.log('Opening external URL in new window:', url);
+        const win = new BrowserWindow({
+            width: 1024,
+            height: 800,
+            title: 'BlockyCRAFT External',
+            icon: path.join(__dirname, '../public/vite.svg'), // Best effort icon
+            autoHideMenuBar: true,
+            webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true,
+                sandbox: true // Important for security when loading external sites
+            }
+        });
+
+        win.setMenu(null);
+        await win.loadURL(url);
+    });
 
     console.log('Window created, loading content...');
 
@@ -74,7 +92,6 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
     createWindow();
-    setupIPC();
 });
 
 app.on('window-all-closed', () => {
@@ -89,48 +106,5 @@ app.on('activate', () => {
     }
 });
 
-function setupIPC() {
-    ipcMain.on('launch-game', (event, options) => {
-        console.log('[Main] Launch requested for:', options.username);
 
-        const sender = event.sender;
-        let progress = 0;
-
-        // Simulating Backend Process (Java Download, Assets, etc.)
-        const interval = setInterval(() => {
-            progress += 5;
-
-            // Send Progress Object
-            const totalSize = 100 * 1024 * 1024; // 100MB
-            const currentSize = (progress / 100) * totalSize;
-
-            sender.send('download-progress', {
-                type: 'download',
-                current: currentSize,
-                total: totalSize
-            });
-
-            // Send Logs
-            if (progress % 20 === 0) {
-                const logs = [
-                    'Downloading lwjgl.jar...',
-                    'Verifying assets index...',
-                    'Unpacking natives...',
-                    'Checking game hash...'
-                ];
-                const log = logs[Math.floor(Math.random() * logs.length)];
-                sender.send('log-message', `[Backend] ${log}`);
-            }
-
-            if (progress >= 100) {
-                clearInterval(interval);
-                sender.send('log-message', '[Backend] Launching java process...');
-                // In real app, we would spawn the child process here
-                setTimeout(() => {
-                    sender.send('game-launched');
-                }, 1000);
-            }
-        }, 200);
-    });
-}
 

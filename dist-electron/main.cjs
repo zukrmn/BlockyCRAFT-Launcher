@@ -2958,6 +2958,8 @@ var GameHandler = class {
   gamePath;
   javaPath;
   javaManager;
+  gameProcess = null;
+  // ChildProcess type but avoiding import issues for now if needed, or better explicit.
   constructor() {
     this.gamePath = import_path2.default.join(import_electron2.app.getPath("userData"), "gamedata");
     this.javaPath = "java";
@@ -2966,6 +2968,15 @@ var GameHandler = class {
   init() {
     import_electron2.ipcMain.handle("launch-game", async (event, options) => {
       return this.handleLaunch(event, options);
+    });
+    import_electron2.ipcMain.handle("kill-game", async () => {
+      if (this.gameProcess) {
+        console.log("Killing game process...");
+        this.gameProcess.kill();
+        this.gameProcess = null;
+        return { success: true };
+      }
+      return { success: false, error: "No game running" };
     });
     import_electron2.ipcMain.handle("check-custom-instance", async () => {
       const instanceZipPath = import_path2.default.resolve("instance.zip");
@@ -3020,7 +3031,7 @@ var GameHandler = class {
       console.log("instance.zip not found locally. Attempting to download from VPS...");
       try {
         console.log("Downloading instance.zip from VPS...");
-        const vpsUrl = "http://185.100.215.195/downloads/instance.zip";
+        const vpsUrl = "https://marina.rodrigorocha.art.br/launcher-assets/instance.zip";
         const response = await fetch(vpsUrl);
         if (response.ok) {
           const arrayBuffer = await response.arrayBuffer();
@@ -3167,7 +3178,7 @@ var GameHandler = class {
               console.log("libraries.zip not found locally. Attempting to download from VPS...");
               this.sendProgress(event.sender, "Baixando bibliotecas do servidor...", 68);
               try {
-                const vpsUrl = "http://185.100.215.195/downloads/libraries.zip";
+                const vpsUrl = "https://marina.rodrigorocha.art.br/launcher-assets/libraries.zip";
                 await this.downloadFile(vpsUrl, import_path2.default.dirname(bundledLibsZip), "libraries.zip", event.sender);
               } catch (e) {
                 console.error("Failed to download libraries.zip from VPS. Trying to proceed without it... (Might crash if offline)", e);
@@ -3295,19 +3306,32 @@ var GameHandler = class {
       launchArgs.push("--port", "25565");
       console.log("Spawning java:", this.javaPath);
       console.log("Args:", launchArgs);
-      const gameProcess = (0, import_child_process2.spawn)(this.javaPath, launchArgs, {
+      const gameEnv = {
+        ...process.env,
+        // Increase OpenAL buffer size to prevent timing warnings
+        ALSOFT_CONF: "period_size=2048",
+        // Prefer PulseAudio/PipeWire backend
+        ALSOFT_DRIVERS: "pulse,alsa,oss"
+      };
+      this.gameProcess = (0, import_child_process2.spawn)(this.javaPath, launchArgs, {
         cwd: dotMinecraft,
-        env: process.env
+        env: gameEnv
       });
-      gameProcess.stdout.on("data", (data) => {
-        console.log(`[MC]: ${data}`);
+      this.gameProcess.stdout.on("data", (data) => {
+        const log = data.toString();
+        console.log(`[MC]: ${log}`);
+        if (log.includes("Connecting to")) {
+          event.sender.send("game-connected");
+        }
       });
-      gameProcess.stderr.on("data", (data) => {
+      this.gameProcess.stderr.on("data", (data) => {
         console.error(`[MC-Err]: ${data}`);
       });
-      gameProcess.on("close", (code) => {
+      this.gameProcess.on("close", (code) => {
         console.log(`Minecraft exited with code ${code}`);
         this.sendProgress(event.sender, "Jogo fechado", 100);
+        this.gameProcess = null;
+        event.sender.send("game-closed", code);
       });
       return { success: true };
     } catch (e) {
@@ -3371,9 +3395,7 @@ var GameHandler = class {
 
 // electron/main.ts
 import_electron3.app.commandLine.appendSwitch("no-sandbox");
-import_electron3.app.commandLine.appendSwitch("disable-gpu");
-import_electron3.app.commandLine.appendSwitch("disable-software-rasterizer");
-import_electron3.app.commandLine.appendSwitch("disable-dev-shm-usage");
+import_electron3.app.commandLine.appendSwitch("ozone-platform-hint", "auto");
 var gameHandler = new GameHandler();
 gameHandler.init();
 console.log("=== BlockyCRAFT Launcher Starting ===");
@@ -3401,6 +3423,25 @@ function createWindow() {
     // Hide menu bar
   });
   mainWindow.setMenu(null);
+  import_electron3.ipcMain.handle("open-external", async (event, url) => {
+    console.log("Opening external URL in new window:", url);
+    const win = new import_electron3.BrowserWindow({
+      width: 1024,
+      height: 800,
+      title: "BlockyCRAFT External",
+      icon: import_node_path.default.join(__dirname, "../public/vite.svg"),
+      // Best effort icon
+      autoHideMenuBar: true,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: true
+        // Important for security when loading external sites
+      }
+    });
+    win.setMenu(null);
+    await win.loadURL(url);
+  });
   console.log("Window created, loading content...");
   if (VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(VITE_DEV_SERVER_URL);
@@ -3426,7 +3467,6 @@ function createWindow() {
 }
 import_electron3.app.whenReady().then(() => {
   createWindow();
-  setupIPC();
 });
 import_electron3.app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
@@ -3438,38 +3478,4 @@ import_electron3.app.on("activate", () => {
     createWindow();
   }
 });
-function setupIPC() {
-  import_electron3.ipcMain.on("launch-game", (event, options) => {
-    console.log("[Main] Launch requested for:", options.username);
-    const sender = event.sender;
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 5;
-      const totalSize = 100 * 1024 * 1024;
-      const currentSize = progress / 100 * totalSize;
-      sender.send("download-progress", {
-        type: "download",
-        current: currentSize,
-        total: totalSize
-      });
-      if (progress % 20 === 0) {
-        const logs = [
-          "Downloading lwjgl.jar...",
-          "Verifying assets index...",
-          "Unpacking natives...",
-          "Checking game hash..."
-        ];
-        const log = logs[Math.floor(Math.random() * logs.length)];
-        sender.send("log-message", `[Backend] ${log}`);
-      }
-      if (progress >= 100) {
-        clearInterval(interval);
-        sender.send("log-message", "[Backend] Launching java process...");
-        setTimeout(() => {
-          sender.send("game-launched");
-        }, 1e3);
-      }
-    }, 200);
-  });
-}
 //# sourceMappingURL=main.cjs.map
