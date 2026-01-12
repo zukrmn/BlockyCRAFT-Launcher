@@ -3613,10 +3613,13 @@ var GameHandler = class {
               const libPath = await this.downloadFile(url, librariesDir, `${lib.artifact}-${lib.version}.jar`, event.sender);
               classpath.push(libPath);
             }
-            this.sendProgress(event.sender, "Baixando nativos (Legacy Fabric)...", 78);
+            this.sendProgress(event.sender, "Baixando nativos...", 78);
+            let classifier = "natives-linux";
+            if (process.platform === "win32") classifier = "natives-windows";
+            else if (process.platform === "darwin") classifier = "natives-osx";
             const nativesList = [
-              { group: "org.lwjgl.lwjgl", artifact: "lwjgl-platform", version: "2.9.4+legacyfabric.9", classifier: "natives-linux" },
-              { group: "net.java.jinput", artifact: "jinput-platform", version: "2.0.5", classifier: "natives-linux" }
+              { group: "org.lwjgl.lwjgl", artifact: "lwjgl-platform", version: "2.9.4+legacyfabric.9", classifier },
+              { group: "net.java.jinput", artifact: "jinput-platform", version: "2.0.5", classifier }
             ];
             for (const native of nativesList) {
               const filename = `${native.artifact}-${native.version}-${native.classifier}.jar`;

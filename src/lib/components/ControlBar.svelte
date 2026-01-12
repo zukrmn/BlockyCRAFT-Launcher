@@ -42,7 +42,7 @@
   <!-- Play / Loading / Close -->
   {#if isLaunching}
     <div class="loading-wrapper">
-      <video src="/loading.webm" autoplay loop muted playsinline class="loading-anim"></video>
+      <video src="loading.webm" autoplay loop muted playsinline class="loading-anim"></video>
     </div>
   {:else if isGameRunning}
     <button class="btn-close" onclick={handleClose}>

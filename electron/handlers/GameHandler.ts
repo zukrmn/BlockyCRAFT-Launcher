@@ -453,10 +453,15 @@ export class GameHandler {
                         }
 
                         // Download Legacy Fabric Natives (Crucial for LWJGL 2.9.4+legacyfabric.9)
-                        this.sendProgress(event.sender, 'Baixando nativos (Legacy Fabric)...', 78);
+                        this.sendProgress(event.sender, 'Baixando nativos...', 78);
+
+                        let classifier = 'natives-linux';
+                        if (process.platform === 'win32') classifier = 'natives-windows';
+                        else if (process.platform === 'darwin') classifier = 'natives-osx';
+
                         const nativesList = [
-                            { group: 'org.lwjgl.lwjgl', artifact: 'lwjgl-platform', version: '2.9.4+legacyfabric.9', classifier: 'natives-linux' },
-                            { group: 'net.java.jinput', artifact: 'jinput-platform', version: '2.0.5', classifier: 'natives-linux' }
+                            { group: 'org.lwjgl.lwjgl', artifact: 'lwjgl-platform', version: '2.9.4+legacyfabric.9', classifier: classifier },
+                            { group: 'net.java.jinput', artifact: 'jinput-platform', version: '2.0.5', classifier: classifier }
                         ];
 
                         for (const native of nativesList) {
