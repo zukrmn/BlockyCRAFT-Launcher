@@ -6,11 +6,13 @@
   let {
     username = $bindable(""),
     isLaunching = false,
+    isGameRunning = false,
     handleLaunch,
+    handleClose
   } = $props();
 
   async function handleDonate() {
-    await ElectronService.openExternal("https://marina.rodrigorocha.art.br/");
+    await ElectronService.openExternal("https://craft.blocky.com.br/donate/");
   }
 
   function onKey(e: KeyboardEvent) {
@@ -22,7 +24,7 @@
 
 <div class="control-bar">
   <!-- Donate Button -->
-  <button class="btn-donate" onclick={handleDonate} disabled={isLaunching}>
+  <button class="btn-donate" onclick={handleDonate}>
     {i18n.t("ui.donate")}
   </button>
 
@@ -33,22 +35,28 @@
       bind:value={username}
       placeholder={i18n.t("ui.username_placeholder")}
       onkeydown={onKey}
-      disabled={isLaunching}
+      disabled={isLaunching || isGameRunning}
     />
   </div>
 
-  <!-- Play Button -->
-  <button
-    class="btn-play"
-    onclick={handleLaunch}
-    disabled={!username.trim() || isLaunching}
-  >
-    {#if isLaunching}
-      ...
-    {:else}
+  <!-- Play / Loading / Close -->
+  {#if isLaunching}
+    <div class="loading-wrapper">
+      <video src="/loading.webm" autoplay loop muted playsinline class="loading-anim"></video>
+    </div>
+  {:else if isGameRunning}
+    <button class="btn-close" onclick={handleClose}>
+      {i18n.t("ui.close")}
+    </button>
+  {:else}
+    <button
+      class="btn-play"
+      onclick={handleLaunch}
+      disabled={!username.trim()}
+    >
       {i18n.t("ui.play")}
-    {/if}
-  </button>
+    </button>
+  {/if}
 </div>
 
 <style>
@@ -120,4 +128,36 @@
   input::placeholder {
     color: #444;
   }
+  .loading-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100px; /* Consumes same space roughly or fixed width to prevent layout shift */
+  }
+
+  .loading-anim {
+    height: 80px; /* Larger size as requested */
+    width: auto;
+    object-fit: contain;
+    mix-blend-mode: normal; 
+  }
+
+  .btn-close {
+    background: #ef4444; /* Red color */
+    color: white;
+    border: none;
+    padding: 0 var(--spacing-xl);
+    height: 100%;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 600;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  
+  .btn-close:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+  }
+
 </style>

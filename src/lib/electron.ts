@@ -71,5 +71,16 @@ export const ElectronService = {
                 if (p >= 100) clearInterval(interval);
             }, 200);
         }
+    },
+
+    async killGame(): Promise<{ success: boolean; error?: string }> {
+        if (!electron) return { success: true };
+        return electron.invoke('kill-game', null);
+    },
+
+    onGameClosed(callback: (code: number) => void) {
+        if (electron) {
+            electron.receive('game-closed', callback);
+        }
     }
 };

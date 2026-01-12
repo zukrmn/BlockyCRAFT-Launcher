@@ -23,6 +23,7 @@ export class GameHandler {
     private gamePath: string;
     private javaPath: string;
     private javaManager: JavaManager;
+    private gameProcess: any = null; // ChildProcess type but avoiding import issues for now if needed, or better explicit.
 
     constructor() {
         this.gamePath = path.join(app.getPath('userData'), 'gamedata');
@@ -33,6 +34,16 @@ export class GameHandler {
     public init() {
         ipcMain.handle('launch-game', async (event, options: GameOptions) => {
             return this.handleLaunch(event, options);
+        });
+
+        ipcMain.handle('kill-game', async () => {
+            if (this.gameProcess) {
+                console.log('Killing game process...');
+                this.gameProcess.kill();
+                this.gameProcess = null;
+                return { success: true };
+            }
+            return { success: false, error: 'No game running' };
         });
 
         ipcMain.handle('check-custom-instance', async () => {
@@ -518,22 +529,24 @@ export class GameHandler {
             console.log('Spawning java:', this.javaPath);
             console.log('Args:', launchArgs);
 
-            const gameProcess = spawn(this.javaPath, launchArgs, {
+            this.gameProcess = spawn(this.javaPath, launchArgs, {
                 cwd: dotMinecraft,
                 env: process.env
             });
 
-            gameProcess.stdout.on('data', (data) => {
+            this.gameProcess.stdout.on('data', (data: any) => {
                 console.log(`[MC]: ${data}`);
             });
 
-            gameProcess.stderr.on('data', (data) => {
+            this.gameProcess.stderr.on('data', (data: any) => {
                 console.error(`[MC-Err]: ${data}`);
             });
 
-            gameProcess.on('close', (code) => {
+            this.gameProcess.on('close', (code: any) => {
                 console.log(`Minecraft exited with code ${code}`);
                 this.sendProgress(event.sender, 'Jogo fechado', 100);
+                this.gameProcess = null;
+                event.sender.send('game-closed', code);
             });
 
             return { success: true };

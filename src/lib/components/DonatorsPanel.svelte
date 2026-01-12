@@ -42,7 +42,7 @@
     margin: 0 0 var(--spacing-md) 0;
     font-size: 1rem;
     font-weight: 600;
-    color: var(--color-text-muted);
+    color: var(--color-primary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }

@@ -2958,6 +2958,8 @@ var GameHandler = class {
   gamePath;
   javaPath;
   javaManager;
+  gameProcess = null;
+  // ChildProcess type but avoiding import issues for now if needed, or better explicit.
   constructor() {
     this.gamePath = import_path2.default.join(import_electron2.app.getPath("userData"), "gamedata");
     this.javaPath = "java";
@@ -2966,6 +2968,15 @@ var GameHandler = class {
   init() {
     import_electron2.ipcMain.handle("launch-game", async (event, options) => {
       return this.handleLaunch(event, options);
+    });
+    import_electron2.ipcMain.handle("kill-game", async () => {
+      if (this.gameProcess) {
+        console.log("Killing game process...");
+        this.gameProcess.kill();
+        this.gameProcess = null;
+        return { success: true };
+      }
+      return { success: false, error: "No game running" };
     });
     import_electron2.ipcMain.handle("check-custom-instance", async () => {
       const instanceZipPath = import_path2.default.resolve("instance.zip");
@@ -3295,19 +3306,21 @@ var GameHandler = class {
       launchArgs.push("--port", "25565");
       console.log("Spawning java:", this.javaPath);
       console.log("Args:", launchArgs);
-      const gameProcess = (0, import_child_process2.spawn)(this.javaPath, launchArgs, {
+      this.gameProcess = (0, import_child_process2.spawn)(this.javaPath, launchArgs, {
         cwd: dotMinecraft,
         env: process.env
       });
-      gameProcess.stdout.on("data", (data) => {
+      this.gameProcess.stdout.on("data", (data) => {
         console.log(`[MC]: ${data}`);
       });
-      gameProcess.stderr.on("data", (data) => {
+      this.gameProcess.stderr.on("data", (data) => {
         console.error(`[MC-Err]: ${data}`);
       });
-      gameProcess.on("close", (code) => {
+      this.gameProcess.on("close", (code) => {
         console.log(`Minecraft exited with code ${code}`);
         this.sendProgress(event.sender, "Jogo fechado", 100);
+        this.gameProcess = null;
+        event.sender.send("game-closed", code);
       });
       return { success: true };
     } catch (e) {

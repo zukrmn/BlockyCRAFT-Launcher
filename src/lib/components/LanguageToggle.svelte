@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Globe } from "lucide-svelte";
+  import { Languages } from "lucide-svelte";
   import { i18n } from "../stores/i18n.svelte";
 
   
@@ -17,7 +17,7 @@
 
 <div class="lang-container">
   <button class="lang-toggle" onclick={toggleMenu} title="Mudar Idioma">
-    <Globe size={20} color="white" />
+    <Languages size={20} color="white" />
   </button>
 
   {#if isOpen}

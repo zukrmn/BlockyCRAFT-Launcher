@@ -12,6 +12,7 @@
   // State
   let username = $state("");
   let isLaunching = $state(false);
+  let isGameRunning = $state(false);
   let launchStatus = $state("");
   let launchProgress = $state(0);
 
@@ -25,11 +26,6 @@
     ElectronService.onProgress((status, progress) => {
       launchStatus = status;
       launchProgress = progress;
-      if (progress === 100) {
-        setTimeout(() => {
-          isLaunching = false;
-        }, 1500);
-      }
     });
 
     // Check for updates silently in background (optional, feature preserved)
@@ -45,11 +41,23 @@
     launchProgress = 0;
 
     const result = await ElectronService.launchGame(username);
-    if (!result.success) {
+    if (result.success) {
+      isGameRunning = true;
+    } else {
       isLaunching = false;
       alert(i18n.t("status.error") + result.error);
     }
   }
+
+  // Listen for game close
+  $effect(() => {
+    ElectronService.onGameClosed(() => {
+      isLaunching = false;
+      isGameRunning = false;
+      launchStatus = "";
+      launchProgress = 0;
+    });
+  });
 
 </script>
 
@@ -75,15 +83,13 @@
   <footer class="footer-bar">
     <ControlBar 
       bind:username 
-      {isLaunching} 
-      {handleLaunch} 
+      {isLaunching}
+      {isGameRunning}
+      {handleLaunch}
+      handleClose={ElectronService.killGame}
     />
     
-    {#if isLaunching}
-      <div class="status-overlay">
-        <div class="status-text">{launchStatus} ({launchProgress}%)</div>
-      </div>
-    {/if}
+
   </footer>
 </main>
 
@@ -138,19 +144,5 @@
     border-top: 1px solid var(--color-border);
   }
 
-  .status-overlay {
-    position: absolute;
-    top: -30px;
-    left: 0;
-    width: 100%;
-    text-align: center;
-  }
 
-  .status-text {
-    background: rgba(0, 0, 0, 0.8);
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    color: var(--color-primary);
-  }
 </style>

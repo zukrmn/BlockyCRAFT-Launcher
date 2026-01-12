@@ -3,8 +3,9 @@ export const translations: Record<string, Record<string, string>> = {
         "ui.donate": "Donate",
         "ui.play": "Play",
         "ui.username_placeholder": "Username",
-        "ui.donators": "Supporters",
+        "ui.donators": "Donators",
         "ui.changelog": "Changelog",
+        "ui.close": "Close",
         "status.launching": "Launching...",
         "status.error": "Error launching: "
     },
@@ -14,6 +15,7 @@ export const translations: Record<string, Record<string, string>> = {
         "ui.username_placeholder": "Nome de Usuário",
         "ui.donators": "Apoiadores",
         "ui.changelog": "Novidades",
+        "ui.close": "Fechar",
         "status.launching": "Iniciando...",
         "status.error": "Erro ao iniciar: "
     },
@@ -23,6 +25,7 @@ export const translations: Record<string, Record<string, string>> = {
         "ui.username_placeholder": "Nombre de Usuario",
         "ui.donators": "Apoyadores",
         "ui.changelog": "Novedades",
+        "ui.close": "Cerrar",
         "status.launching": "Iniciando...",
         "status.error": "Error al iniciar: "
     }
