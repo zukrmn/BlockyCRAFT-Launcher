@@ -6,6 +6,7 @@ import { promisify } from 'util';
 import AdmZip from 'adm-zip';
 import { createWriteStream } from 'fs';
 import { JavaManager } from './JavaManager.js';
+import { UpdateManager } from './UpdateManager.js';
 
 const execAsync = promisify(exec);
 
@@ -23,12 +24,14 @@ export class GameHandler {
     private gamePath: string;
     private javaPath: string;
     private javaManager: JavaManager;
+    private updateManager: UpdateManager;
     private gameProcess: any = null; // ChildProcess type but avoiding import issues for now if needed, or better explicit.
 
     constructor() {
         this.gamePath = path.join(app.getPath('userData'), 'gamedata');
         this.javaPath = 'java'; // Will be set by JavaManager
         this.javaManager = new JavaManager();
+        this.updateManager = new UpdateManager();
     }
 
     public init() {
@@ -120,21 +123,26 @@ export class GameHandler {
             // We need a sender to show progress, but checkAndExtractInstance doesn't have it passed usually.
             // For now, we'll log it. Ideally we refactor to pass sender.
             // Note: Since this is called before typical progress events, we might want to just blocking download.
-            try {
-                // HACK: utilizing a temporary Electron sender mock or just console logging if specific progress isn't critical here
-                // But actually, verify if we can access the downloading logic properly.
-                // We'll use a simple fetch/fs logic here to avoid complicating signatures across the class
-                console.log('Downloading instance.zip from VPS...');
-                const vpsUrl = 'https://marina.rodrigorocha.art.br/launcher-assets/instance.zip';
 
-                const response = await fetch(vpsUrl);
-                if (response.ok) {
-                    const arrayBuffer = await response.arrayBuffer();
-                    fs.writeFileSync(oldZip, Buffer.from(arrayBuffer));
-                    console.log('instance.zip downloaded successfully.');
+            const vpsUrls = [
+                'https://craft.blocky.com.br/launcher-assets/instance.zip',
+                'https://marina.rodrigorocha.art.br/launcher-assets/instance.zip'
+            ];
+
+            for (const vpsUrl of vpsUrls) {
+                try {
+                    console.log(`Trying to download instance.zip from ${vpsUrl}...`);
+                    const response = await fetch(vpsUrl, { signal: AbortSignal.timeout(30000) });
+                    if (response.ok) {
+                        const arrayBuffer = await response.arrayBuffer();
+                        fs.writeFileSync(oldZip, Buffer.from(arrayBuffer));
+                        console.log('instance.zip downloaded successfully from', vpsUrl);
+                        break; // Success, exit loop
+                    }
+                } catch (e) {
+                    console.warn(`Failed to download instance.zip from ${vpsUrl}:`, e);
+                    // Continue to next URL
                 }
-            } catch (e) {
-                console.error('Failed to download instance.zip:', e);
             }
         }
 
@@ -208,6 +216,22 @@ export class GameHandler {
 
     private async handleLaunch(event: IpcMainInvokeEvent, options: GameOptions) {
         console.log('Requesting game launch...', options);
+
+        // 0. Check for updates first
+        this.sendProgress(event.sender, 'Verificando atualizações...', 2);
+        try {
+            const updateResult = await this.updateManager.performAllUpdates((status, percent) => {
+                // Map update progress to 2-15% of total progress
+                const mappedPercent = 2 + (percent / 100) * 13;
+                this.sendProgress(event.sender, status, Math.round(mappedPercent));
+            });
+
+            if (!updateResult.success) {
+                console.warn('Update check failed, continuing anyway:', updateResult.error);
+            }
+        } catch (e) {
+            console.warn('Update check failed, continuing anyway:', e);
+        }
 
         // 1. Check & Extract Custom Instance
         const instanceDir = await this.checkAndExtractInstance();
@@ -320,7 +344,9 @@ export class GameHandler {
                             { name: 'log4j-core:2.22.1', group: 'org.apache.logging.log4j', artifact: 'log4j-core', version: '2.22.1' },
                             // Guava (Critical for modern Fabric/Mixin on older MC)
                             { name: 'guava:31.0.1-jre', group: 'com.google.guava', artifact: 'guava', version: '31.0.1-jre' },
-                            { name: 'failureaccess:1.0.1', group: 'com.google.guava', artifact: 'failureaccess', version: '1.0.1' }
+                            { name: 'failureaccess:1.0.1', group: 'com.google.guava', artifact: 'failureaccess', version: '1.0.1' },
+                            // SLF4J (Required by StationAPI)
+                            { name: 'slf4j-api:2.0.16', group: 'org.slf4j', artifact: 'slf4j-api', version: '2.0.16' }
                         ];
 
                         const fabricBase = 'https://maven.fabricmc.net/';
@@ -334,11 +360,27 @@ export class GameHandler {
                         if (!fs.existsSync(bundledLibsZip)) {
                             console.log('libraries.zip not found locally. Attempting to download from VPS...');
                             this.sendProgress(event.sender, 'Baixando bibliotecas do servidor...', 68);
-                            try {
-                                const vpsUrl = 'https://marina.rodrigorocha.art.br/launcher-assets/libraries.zip';
-                                await this.downloadFile(vpsUrl, path.dirname(bundledLibsZip), 'libraries.zip', event.sender);
-                            } catch (e) {
-                                console.error('Failed to download libraries.zip from VPS. Trying to proceed without it... (Might crash if offline)', e);
+
+                            const libsUrls = [
+                                'https://craft.blocky.com.br/launcher-assets/libraries.zip',
+                                'https://marina.rodrigorocha.art.br/launcher-assets/libraries.zip'
+                            ];
+
+                            let downloaded = false;
+                            for (const vpsUrl of libsUrls) {
+                                try {
+                                    console.log(`Trying to download libraries.zip from ${vpsUrl}...`);
+                                    await this.downloadFile(vpsUrl, path.dirname(bundledLibsZip), 'libraries.zip', event.sender);
+                                    downloaded = true;
+                                    break; // Success, exit loop
+                                } catch (e) {
+                                    console.warn(`Failed to download libraries.zip from ${vpsUrl}:`, e);
+                                    // Continue to next URL
+                                }
+                            }
+
+                            if (!downloaded) {
+                                console.error('Failed to download libraries.zip from all sources. Game might crash if libraries are missing.');
                             }
                         }
 
@@ -392,7 +434,7 @@ export class GameHandler {
                             // Try Fabric Maven first, then Maven Central, then Legacy Fabric
                             let url = fabricBase + pathStr;
 
-                            if (lib.group.startsWith('org.apache') || lib.group === 'commons-io' || lib.group === 'commons-codec' || lib.group === 'net.java.jutils' || lib.group === 'net.java.jinput' || lib.group.startsWith('org.ow2.asm') || lib.group.startsWith('com.google.guava')) {
+                            if (lib.group.startsWith('org.apache') || lib.group === 'commons-io' || lib.group === 'commons-codec' || lib.group === 'net.java.jutils' || lib.group === 'net.java.jinput' || lib.group.startsWith('org.ow2.asm') || lib.group.startsWith('com.google.guava') || lib.group.startsWith('org.slf4j')) {
                                 url = mavenCentral + pathStr;
                             } else if (lib.group.startsWith('org.lwjgl')) {
                                 url = legacyFabricRepo + pathStr;
@@ -577,25 +619,26 @@ export class GameHandler {
     // End of class (Removed unused methods: getVersionDetails, downloadLibraries, spawnGameProcess, old downloadFile)
     private async handleUpdateCheck() {
         try {
-            const instanceDir = path.join(app.getPath('userData'), 'instances', 'default');
-            const localVersionPath = path.join(instanceDir, 'local_version.txt');
+            const updateCheck = await this.updateManager.checkForUpdates();
 
-            // Default to version 0.0 if not found
-            let localVersion = '0.0';
-            if (fs.existsSync(localVersionPath)) {
-                localVersion = fs.readFileSync(localVersionPath, 'utf-8').trim();
+            if (!updateCheck.remoteVersions) {
+                return { available: false, error: 'Failed to fetch version info' };
             }
 
-            const remoteUrl = 'http://185.100.215.195/downloads/version.json';
-            const response = await fetch(remoteUrl);
-            if (!response.ok) return { available: false, error: 'Failed to fetch version' };
+            const hasUpdates = updateCheck.instanceUpdate ||
+                updateCheck.librariesUpdate ||
+                updateCheck.modsUpdate;
 
-            const remoteData = await response.json() as any;
-
-            // Simple string comparison for now, assuming semantic versioning isn't strictly enforced
-            if (remoteData.version !== localVersion) {
-                return { available: true, version: remoteData.version, notes: remoteData.notes };
+            if (hasUpdates) {
+                return {
+                    available: true,
+                    instanceUpdate: updateCheck.instanceUpdate,
+                    librariesUpdate: updateCheck.librariesUpdate,
+                    modsUpdate: updateCheck.modsUpdate,
+                    notes: updateCheck.remoteVersions.mods?.notes || 'Atualizações disponíveis'
+                };
             }
+
             return { available: false };
         } catch (e) {
             console.error('Update check failed:', e);
@@ -605,42 +648,11 @@ export class GameHandler {
 
     private async handlePerformUpdate(event: IpcMainInvokeEvent) {
         try {
-            this.sendProgress(event.sender, 'Iniciando atualização...', 0);
-            const remoteUrl = 'http://185.100.215.195/downloads/version.json';
-            const response = await fetch(remoteUrl);
-            const remoteData = await response.json() as any;
+            const result = await this.updateManager.performAllUpdates((status, percent) => {
+                this.sendProgress(event.sender, status, percent);
+            });
 
-            if (!remoteData.mods_url) throw new Error('No mods_url in version.json');
-
-            const instanceDir = path.join(app.getPath('userData'), 'instances', 'default');
-            const gameRoot = instanceDir;
-            const modsDir = path.join(gameRoot, '.minecraft', 'mods');
-
-            // 1. Download Update Zip
-            const tempUpdatePath = path.join(gameRoot, 'temp_update.zip');
-            await this.downloadFile(remoteData.mods_url, gameRoot, 'temp_update.zip', event.sender);
-
-            // 2. Clear OLD Mods (Safety first)
-            if (fs.existsSync(modsDir)) {
-                this.sendProgress(event.sender, 'Removendo mods antigos...', 40);
-                fs.rmSync(modsDir, { recursive: true, force: true });
-            }
-
-            // 3. Extract New
-            this.sendProgress(event.sender, 'Instalando novos mods...', 60);
-            const zip = new AdmZip(tempUpdatePath);
-            // Extract to .minecraft directory
-            zip.extractAllTo(path.join(gameRoot, '.minecraft'), true);
-
-            // 4. Update Local Version
-            fs.writeFileSync(path.join(instanceDir, 'local_version.txt'), remoteData.version);
-
-            // Cleanup
-            fs.unlinkSync(tempUpdatePath);
-
-            this.sendProgress(event.sender, 'Atualização concluída!', 100);
-            return { success: true };
-
+            return result;
         } catch (e) {
             console.error('Update failed:', e);
             this.sendProgress(event.sender, `Erro na atualização: ${e}`, 0);
