@@ -6,8 +6,8 @@ import AdmZip from 'adm-zip';
 
 // VPS Configuration - Primary and Fallback URLs for version.json
 const VERSION_JSON_URLS = [
-    'https://craft.blocky.com.br/launcher-assets/version.json',
-    'https://marina.rodrigorocha.art.br/launcher-assets/version.json'
+    'https://marina.rodrigorocha.art.br/launcher-assets/version.json',
+    'https://craft.blocky.com.br/launcher-assets/version.json'
 ];
 
 // Type for URL that can be a single string or array of strings
