@@ -3664,6 +3664,21 @@ var GameHandler = class {
               const tempPath = await this.downloadFile(url, import_path3.default.join(gameRoot, "temp_natives"), filename, event.sender);
               await safeExtractZipWithRetry(tempPath, nativesDir);
             }
+            if (process.platform === "win32") {
+              const openalRenames = [
+                { from: "OpenAL-amd64.dll", to: "OpenAL64.dll" },
+                { from: "OpenAL-i386.dll", to: "OpenAL32.dll" },
+                { from: "OpenAL-aarch64.dll", to: "OpenAL64.dll" }
+              ];
+              for (const rename of openalRenames) {
+                const srcPath = import_path3.default.join(nativesDir, rename.from);
+                const destPath = import_path3.default.join(nativesDir, rename.to);
+                if (import_fs5.default.existsSync(srcPath) && !import_fs5.default.existsSync(destPath)) {
+                  console.log(`[GameHandler] Renaming ${rename.from} -> ${rename.to}`);
+                  import_fs5.default.copyFileSync(srcPath, destPath);
+                }
+              }
+            }
             const loaderUrl = "https://maven.fabricmc.net/net/fabricmc/fabric-loader/0.16.7/fabric-loader-0.16.7.jar";
             const loaderPath = await this.downloadFile(loaderUrl, librariesDir, "fabric-loader-0.16.7.jar", event.sender);
             const intermediaryUrl = "https://maven.glass-launcher.net/babric/babric/intermediary-upstream/b1.7.3/intermediary-upstream-b1.7.3.jar";
