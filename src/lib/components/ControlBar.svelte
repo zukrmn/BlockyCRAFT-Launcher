@@ -136,10 +136,15 @@
   }
 
   .loading-anim {
-    height: 80px; /* Larger size as requested */
+    height: 120px;
     width: auto;
     object-fit: contain;
-    mix-blend-mode: normal; 
+    mix-blend-mode: normal;
+    /* Smooth downscaling for high-res video */
+    image-rendering: auto;
+    transform: translateZ(0); /* Force GPU acceleration */
+    will-change: contents;
+    filter: blur(0); /* Triggers anti-aliasing in some browsers */
   }
 
   .btn-close {
