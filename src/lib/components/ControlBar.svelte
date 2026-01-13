@@ -128,6 +128,13 @@
   input::placeholder {
     color: #444;
   }
+
+  input:disabled {
+    background: rgba(0, 0, 0, 0.3);
+    color: #666;
+    cursor: not-allowed;
+    border-color: #222;
+  }
   .loading-wrapper {
     display: flex;
     align-items: center;
