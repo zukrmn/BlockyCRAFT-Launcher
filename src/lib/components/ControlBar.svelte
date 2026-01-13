@@ -42,7 +42,7 @@
   <!-- Play / Loading / Close -->
   {#if isLaunching}
     <div class="loading-wrapper">
-      <video src="loading.webm" autoplay loop muted playsinline class="loading-anim"></video>
+      <img src="loading.gif" alt="Loading" class="loading-anim" />
     </div>
   {:else if isGameRunning}
     <button class="btn-close" onclick={handleClose}>
@@ -128,6 +128,13 @@
   input::placeholder {
     color: #444;
   }
+
+  input:disabled {
+    background: rgba(0, 0, 0, 0.3);
+    color: #666;
+    cursor: not-allowed;
+    border-color: #222;
+  }
   .loading-wrapper {
     display: flex;
     align-items: center;
@@ -136,10 +143,9 @@
   }
 
   .loading-anim {
-    height: 80px; /* Larger size as requested */
+    height: 120px;
     width: auto;
     object-fit: contain;
-    mix-blend-mode: normal; 
   }
 
   .btn-close {
