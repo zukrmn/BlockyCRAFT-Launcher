@@ -73,10 +73,17 @@ async function safeExtractZipWithRetry(zipPath: string, destDir: string, maxRetr
 const VERSION_MANIFEST_URL = 'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json';
 const TARGET_VERSION_ID = 'b1.7.3';
 
+interface GameSettings {
+    minMemory: string;
+    maxMemory: string;
+    javaArgs: string;
+}
+
 interface GameOptions {
     username: string;
     gamePath?: string;
     javaPath?: string;
+    settings?: GameSettings;
 }
 
 export class GameHandler {
@@ -613,7 +620,15 @@ export class GameHandler {
             // 3. Launch
             this.sendProgress(event.sender, 'Iniciando Jogo...', 95);
 
-            const launchArgs = [
+            // Memory settings from user config
+            const minMem = options.settings?.minMemory || '512';
+            const maxMem = options.settings?.maxMemory || '2048';
+            const customArgs = options.settings?.javaArgs || '';
+
+            // Base launch args
+            const launchArgs: string[] = [
+                `-Xms${minMem}M`,
+                `-Xmx${maxMem}M`,
                 '-Djava.library.path=' + nativesDir,
                 '-Dorg.lwjgl.librarypath=' + nativesDir, // Fix for some lwjgl versions
                 '-Dfabric.gameJarPath=' + mcJarPath,
@@ -625,9 +640,17 @@ export class GameHandler {
                 '-Dminecraft.resources.index=' + path.join(dotMinecraft, 'resources'),
                 '-Dminecraft.applet.TargetDirectory=' + dotMinecraft,
                 '-Dminecraft.applet.BaseURL=file:///',
-                '-cp', classpath.join(path.delimiter),
-                mainClass
             ];
+
+            // Add custom JVM arguments from settings (if any)
+            if (customArgs.trim()) {
+                const customArgsArray = customArgs.trim().split(/\s+/).filter(arg => arg.length > 0);
+                launchArgs.push(...customArgsArray);
+            }
+
+            // Add classpath and main class
+            launchArgs.push('-cp', classpath.join(path.delimiter));
+            launchArgs.push(mainClass);
 
             // Game Args
             launchArgs.push('--username', options.username);

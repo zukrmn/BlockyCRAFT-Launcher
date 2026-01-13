@@ -2,8 +2,8 @@
   import { Languages } from "lucide-svelte";
   import { i18n } from "../stores/i18n.svelte";
 
-  
   let isOpen = $state(false);
+  let containerRef: HTMLDivElement;
 
   function toggleMenu() {
     isOpen = !isOpen;
@@ -13,9 +13,17 @@
     i18n.setLang(lang);
     isOpen = false;
   }
+
+  function handleClickOutside(e: MouseEvent) {
+    if (isOpen && containerRef && !containerRef.contains(e.target as Node)) {
+      isOpen = false;
+    }
+  }
 </script>
 
-<div class="lang-container">
+<svelte:window onclick={handleClickOutside} />
+
+<div class="lang-container" bind:this={containerRef}>
   <button class="lang-toggle" onclick={toggleMenu} title="Mudar Idioma">
     <Languages size={20} color="white" />
   </button>
