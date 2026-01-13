@@ -5,7 +5,11 @@ import path from 'node:path';
 app.commandLine.appendSwitch('no-sandbox');
 app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
 
+import { Logger } from './handlers/Logger.js';
 import { GameHandler } from './handlers/GameHandler.js';
+
+// Initialize logger as early as possible (after imports)
+// Note: Full init happens in app.whenReady() when userData is available
 const gameHandler = new GameHandler();
 gameHandler.init();
 
@@ -91,6 +95,12 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+    // Initialize persistent logger
+    Logger.init();
+    Logger.info('Main', `Electron version: ${process.versions.electron}`);
+    Logger.info('Main', `Node version: ${process.versions.node}`);
+    Logger.info('Main', `Platform: ${process.platform} ${process.arch}`);
+
     createWindow();
 });
 

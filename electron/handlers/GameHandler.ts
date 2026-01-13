@@ -7,6 +7,7 @@ import AdmZip from 'adm-zip';
 import { createWriteStream } from 'fs';
 import { JavaManager } from './JavaManager.js';
 import { UpdateManager } from './UpdateManager.js';
+import { Logger } from './Logger.js';
 
 const execAsync = promisify(exec);
 
@@ -670,9 +671,13 @@ export class GameHandler {
             ];
 
             this.gameProcess.stdout.on('data', (data: any) => {
-                const log = data.toString();
+                const log = data.toString().trim();
+                if (!log) return;
 
-                // Skip suppressed messages
+                // Always log to game file
+                Logger.game('stdout', log);
+
+                // Skip suppressed messages for console
                 if (suppressedPatterns.some(pattern => log.includes(pattern))) {
                     return;
                 }
@@ -686,9 +691,13 @@ export class GameHandler {
             });
 
             this.gameProcess.stderr.on('data', (data: any) => {
-                const log = data.toString();
+                const log = data.toString().trim();
+                if (!log) return;
 
-                // Skip suppressed messages
+                // Always log to game file
+                Logger.game('stderr', log);
+
+                // Skip suppressed messages for console
                 if (suppressedPatterns.some(pattern => log.includes(pattern))) {
                     return;
                 }
@@ -697,6 +706,7 @@ export class GameHandler {
             });
 
             this.gameProcess.on('close', (code: any) => {
+                Logger.info('GameHandler', `Minecraft exited with code ${code}`);
                 console.log(`Minecraft exited with code ${code}`);
                 this.sendProgress(event.sender, 'Jogo fechado', 100);
                 this.gameProcess = null;
