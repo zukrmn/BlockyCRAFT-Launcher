@@ -3317,8 +3317,30 @@ function safeExtractZip(zipPath, destDir) {
     console.error(`[GameHandler] Invalid ZIP file: ${zipPath}. First bytes: ${buffer.slice(0, 20).toString("hex")}`);
     throw new Error(`Invalid ZIP file. The download may have failed.`);
   }
+  import_fs5.default.mkdirSync(destDir, { recursive: true });
   const zip = new import_adm_zip3.default(zipPath);
   zip.extractAllTo(destDir, true);
+}
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+async function safeExtractZipWithRetry(zipPath, destDir, maxRetries = 3) {
+  const delays = [500, 1e3, 2e3];
+  let lastError = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      safeExtractZip(zipPath, destDir);
+      return;
+    } catch (e) {
+      lastError = e;
+      if (attempt < maxRetries) {
+        const delay = delays[attempt] || 2e3;
+        console.warn(`[GameHandler] Extraction failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms...`);
+        await sleep(delay);
+      }
+    }
+  }
+  throw lastError || new Error(`Failed to extract ${zipPath} after ${maxRetries + 1} attempts`);
 }
 var VERSION_MANIFEST_URL = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
 var TARGET_VERSION_ID = "b1.7.3";
@@ -3632,7 +3654,7 @@ var GameHandler = class {
               else if (import_fs5.default.existsSync(mavenDirect)) sourceZip = mavenDirect;
               if (sourceZip) {
                 console.log(`[Cache] Found native library locally: ${filename}`);
-                safeExtractZip(sourceZip, nativesDir);
+                await safeExtractZipWithRetry(sourceZip, nativesDir);
                 continue;
               }
               let url = legacyFabricRepo + pathStr;
@@ -3640,7 +3662,7 @@ var GameHandler = class {
                 url = mavenCentral + pathStr;
               }
               const tempPath = await this.downloadFile(url, import_path3.default.join(gameRoot, "temp_natives"), filename, event.sender);
-              safeExtractZip(tempPath, nativesDir);
+              await safeExtractZipWithRetry(tempPath, nativesDir);
             }
             const loaderUrl = "https://maven.fabricmc.net/net/fabricmc/fabric-loader/0.16.7/fabric-loader-0.16.7.jar";
             const loaderPath = await this.downloadFile(loaderUrl, librariesDir, "fabric-loader-0.16.7.jar", event.sender);

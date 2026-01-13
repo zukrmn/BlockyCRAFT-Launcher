@@ -29,8 +29,43 @@ function safeExtractZip(zipPath: string, destDir: string): void {
         console.error(`[GameHandler] Invalid ZIP file: ${zipPath}. First bytes: ${buffer.slice(0, 20).toString('hex')}`);
         throw new Error(`Invalid ZIP file. The download may have failed.`);
     }
+    fs.mkdirSync(destDir, { recursive: true });
     const zip = new AdmZip(zipPath);
     zip.extractAllTo(destDir, true);
+}
+
+/**
+ * Sleep helper for retry delays
+ */
+function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Extract ZIP with retry logic for Windows file system race conditions
+ * Uses exponential backoff: 500ms, 1000ms, 2000ms
+ */
+async function safeExtractZipWithRetry(zipPath: string, destDir: string, maxRetries: number = 3): Promise<void> {
+    const delays = [500, 1000, 2000];
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            safeExtractZip(zipPath, destDir);
+            return; // Success
+        } catch (e: any) {
+            lastError = e;
+
+            if (attempt < maxRetries) {
+                const delay = delays[attempt] || 2000;
+                console.warn(`[GameHandler] Extraction failed (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms...`);
+                await sleep(delay);
+            }
+        }
+    }
+
+    // All retries failed
+    throw lastError || new Error(`Failed to extract ${zipPath} after ${maxRetries + 1} attempts`);
 }
 
 // Beta 1.7.3 Configuration
@@ -471,7 +506,7 @@ export class GameHandler {
 
                             if (sourceZip) {
                                 console.log(`[Cache] Found native library locally: ${filename}`);
-                                safeExtractZip(sourceZip, nativesDir);
+                                await safeExtractZipWithRetry(sourceZip, nativesDir);
                                 continue;
                             }
 
@@ -485,7 +520,7 @@ export class GameHandler {
                             const tempPath = await this.downloadFile(url, path.join(gameRoot, 'temp_natives'), filename, event.sender);
 
                             // Extract to nativesDir
-                            safeExtractZip(tempPath, nativesDir);
+                            await safeExtractZipWithRetry(tempPath, nativesDir);
                         }
 
                         // Download Fabric Loader (0.16.7)
