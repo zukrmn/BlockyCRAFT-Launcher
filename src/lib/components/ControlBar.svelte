@@ -42,7 +42,7 @@
   <!-- Play / Loading / Close -->
   {#if isLaunching}
     <div class="loading-wrapper">
-      <video src="loading.webm" autoplay loop muted playsinline class="loading-anim"></video>
+      <img src="loading.gif" alt="Loading" class="loading-anim" />
     </div>
   {:else if isGameRunning}
     <button class="btn-close" onclick={handleClose}>
@@ -139,12 +139,6 @@
     height: 120px;
     width: auto;
     object-fit: contain;
-    mix-blend-mode: normal;
-    /* Smooth downscaling for high-res video */
-    image-rendering: auto;
-    transform: translateZ(0); /* Force GPU acceleration */
-    will-change: contents;
-    filter: blur(0); /* Triggers anti-aliasing in some browsers */
   }
 
   .btn-close {
