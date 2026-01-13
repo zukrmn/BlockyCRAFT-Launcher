@@ -282,6 +282,24 @@ export class GameHandler {
         const nativesDir = path.join(binDir, 'natives');
         const librariesDir = path.join(gameRoot, 'libraries'); // Store libs outside .minecraft usually, or inside
 
+        // Fix OpenAL DLL naming for Windows (run on every launch)
+        // Legacy Fabric uses 'OpenAL-amd64.dll' but LWJGL 2.x expects 'OpenAL64.dll'
+        if (process.platform === 'win32' && fs.existsSync(nativesDir)) {
+            const openalRenames = [
+                { from: 'OpenAL-amd64.dll', to: 'OpenAL64.dll' },
+                { from: 'OpenAL-i386.dll', to: 'OpenAL32.dll' },
+                { from: 'OpenAL-aarch64.dll', to: 'OpenAL64.dll' }
+            ];
+            for (const rename of openalRenames) {
+                const srcPath = path.join(nativesDir, rename.from);
+                const destPath = path.join(nativesDir, rename.to);
+                if (fs.existsSync(srcPath) && !fs.existsSync(destPath)) {
+                    console.log(`[GameHandler] Fixing OpenAL: ${rename.from} -> ${rename.to}`);
+                    fs.copyFileSync(srcPath, destPath);
+                }
+            }
+        }
+
         try {
             // 2a. Download Vanilla Assets (Required for both)
             if (!options.username) throw new Error('Username required');

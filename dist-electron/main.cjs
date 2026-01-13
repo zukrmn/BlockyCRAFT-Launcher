@@ -3497,6 +3497,21 @@ var GameHandler = class {
     const binDir = import_path3.default.join(dotMinecraft, "bin");
     const nativesDir = import_path3.default.join(binDir, "natives");
     const librariesDir = import_path3.default.join(gameRoot, "libraries");
+    if (process.platform === "win32" && import_fs5.default.existsSync(nativesDir)) {
+      const openalRenames = [
+        { from: "OpenAL-amd64.dll", to: "OpenAL64.dll" },
+        { from: "OpenAL-i386.dll", to: "OpenAL32.dll" },
+        { from: "OpenAL-aarch64.dll", to: "OpenAL64.dll" }
+      ];
+      for (const rename of openalRenames) {
+        const srcPath = import_path3.default.join(nativesDir, rename.from);
+        const destPath = import_path3.default.join(nativesDir, rename.to);
+        if (import_fs5.default.existsSync(srcPath) && !import_fs5.default.existsSync(destPath)) {
+          console.log(`[GameHandler] Fixing OpenAL: ${rename.from} -> ${rename.to}`);
+          import_fs5.default.copyFileSync(srcPath, destPath);
+        }
+      }
+    }
     try {
       if (!options.username) throw new Error("Username required");
       this.sendProgress(event.sender, "Verificando Java...", 5);
