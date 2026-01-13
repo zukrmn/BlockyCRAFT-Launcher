@@ -161,7 +161,7 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     width: 90%;
-    max-width: 450px;
+    max-width: 550px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   }
 
