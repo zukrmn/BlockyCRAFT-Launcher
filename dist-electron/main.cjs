@@ -3116,8 +3116,8 @@ var import_fs4 = __toESM(require("fs"), 1);
 var import_fs5 = require("fs");
 var import_adm_zip2 = __toESM(require_adm_zip(), 1);
 var VERSION_JSON_URLS = [
-  "https://craft.blocky.com.br/launcher-assets/version.json",
-  "https://marina.rodrigorocha.art.br/launcher-assets/version.json"
+  "https://marina.rodrigorocha.art.br/launcher-assets/version.json",
+  "https://craft.blocky.com.br/launcher-assets/version.json"
 ];
 var UpdateManager = class {
   dataPath;
@@ -3563,8 +3563,8 @@ var GameHandler = class {
     if (!import_fs6.default.existsSync(instanceZip)) {
       console.log("instance.zip not found. Attempting to download from VPS...");
       const vpsUrls = [
-        "https://craft.blocky.com.br/launcher-assets/instance.zip",
-        "https://marina.rodrigorocha.art.br/launcher-assets/instance.zip"
+        "https://marina.rodrigorocha.art.br/launcher-assets/instance.zip",
+        "https://craft.blocky.com.br/launcher-assets/instance.zip"
       ];
       for (const vpsUrl of vpsUrls) {
         try {
@@ -3690,9 +3690,12 @@ var GameHandler = class {
       const mcJarPath = await this.downloadFile(clientUrl, binDir, "minecraft.jar", event.sender);
       if (!isCustomInstance) {
         this.sendProgress(event.sender, "Baixando bibliotecas...", 70);
+        let nativesClassifier = "natives-linux";
+        if (process.platform === "win32") nativesClassifier = "natives-windows";
+        else if (process.platform === "darwin") nativesClassifier = "natives-osx";
         for (const lib of versionDetails.libraries) {
-          if (lib.downloads && lib.downloads.classifiers && lib.downloads.classifiers["natives-linux"]) {
-            const native = lib.downloads.classifiers["natives-linux"];
+          if (lib.downloads && lib.downloads.classifiers && lib.downloads.classifiers[nativesClassifier]) {
+            const native = lib.downloads.classifiers[nativesClassifier];
             const tempNativePath = await this.downloadFile(native.url, import_path4.default.join(gameRoot, "temp_natives"), import_path4.default.basename(native.path), event.sender);
             const zip = new import_adm_zip3.default(tempNativePath);
             zip.extractAllTo(nativesDir, true);
@@ -3747,8 +3750,8 @@ var GameHandler = class {
                 console.log("libraries.zip not found locally. Attempting to download from VPS...");
                 this.sendProgress(event.sender, "Baixando bibliotecas do servidor...", 68);
                 const libsUrls = [
-                  "https://craft.blocky.com.br/launcher-assets/libraries.zip",
-                  "https://marina.rodrigorocha.art.br/launcher-assets/libraries.zip"
+                  "https://marina.rodrigorocha.art.br/launcher-assets/libraries.zip",
+                  "https://craft.blocky.com.br/launcher-assets/libraries.zip"
                 ];
                 let downloaded = false;
                 for (const vpsUrl of libsUrls) {

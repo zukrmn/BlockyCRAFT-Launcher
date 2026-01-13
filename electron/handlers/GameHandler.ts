@@ -163,8 +163,8 @@ export class GameHandler {
             // Note: Since this is called before typical progress events, we might want to just blocking download.
 
             const vpsUrls = [
-                'https://craft.blocky.com.br/launcher-assets/instance.zip',
-                'https://marina.rodrigorocha.art.br/launcher-assets/instance.zip'
+                'https://marina.rodrigorocha.art.br/launcher-assets/instance.zip',
+                'https://craft.blocky.com.br/launcher-assets/instance.zip'
             ];
 
             for (const vpsUrl of vpsUrls) {
@@ -341,15 +341,18 @@ export class GameHandler {
             if (!isCustomInstance) {
                 this.sendProgress(event.sender, 'Baixando bibliotecas...', 70);
 
+                // Determine platform-specific natives classifier
+                let nativesClassifier = 'natives-linux';
+                if (process.platform === 'win32') nativesClassifier = 'natives-windows';
+                else if (process.platform === 'darwin') nativesClassifier = 'natives-osx';
+
                 // Iterate libraries for natives
                 for (const lib of versionDetails.libraries) {
-                    if (lib.downloads && lib.downloads.classifiers && lib.downloads.classifiers['natives-linux']) {
-                        const native = lib.downloads.classifiers['natives-linux'];
+                    if (lib.downloads && lib.downloads.classifiers && lib.downloads.classifiers[nativesClassifier]) {
+                        const native = lib.downloads.classifiers[nativesClassifier];
                         // Download and unzip
                         // For simplicity in this demo, we assume we need to unzip them to bin/natives
                         // Implementation: Download zip to temp, unzip to nativesDir.
-                        // Skipping full implementation for now, assuming standard ones are sufficient or pre-installed?
-                        // Wait, user has nothing. We MUST download natives.
 
                         const tempNativePath = await this.downloadFile(native.url, path.join(gameRoot, 'temp_natives'), path.basename(native.path), event.sender);
                         const zip = new AdmZip(tempNativePath);
@@ -421,8 +424,8 @@ export class GameHandler {
                                 this.sendProgress(event.sender, 'Baixando bibliotecas do servidor...', 68);
 
                                 const libsUrls = [
-                                    'https://craft.blocky.com.br/launcher-assets/libraries.zip',
-                                    'https://marina.rodrigorocha.art.br/launcher-assets/libraries.zip'
+                                    'https://marina.rodrigorocha.art.br/launcher-assets/libraries.zip',
+                                    'https://craft.blocky.com.br/launcher-assets/libraries.zip'
                                 ];
 
                                 let downloaded = false;
