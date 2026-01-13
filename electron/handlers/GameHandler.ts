@@ -523,6 +523,24 @@ export class GameHandler {
                             await safeExtractZipWithRetry(tempPath, nativesDir);
                         }
 
+                        // Fix OpenAL DLL naming for Windows
+                        // Legacy Fabric uses 'OpenAL-amd64.dll' but LWJGL 2.x expects 'OpenAL64.dll'
+                        if (process.platform === 'win32') {
+                            const openalRenames = [
+                                { from: 'OpenAL-amd64.dll', to: 'OpenAL64.dll' },
+                                { from: 'OpenAL-i386.dll', to: 'OpenAL32.dll' },
+                                { from: 'OpenAL-aarch64.dll', to: 'OpenAL64.dll' }
+                            ];
+                            for (const rename of openalRenames) {
+                                const srcPath = path.join(nativesDir, rename.from);
+                                const destPath = path.join(nativesDir, rename.to);
+                                if (fs.existsSync(srcPath) && !fs.existsSync(destPath)) {
+                                    console.log(`[GameHandler] Renaming ${rename.from} -> ${rename.to}`);
+                                    fs.copyFileSync(srcPath, destPath);
+                                }
+                            }
+                        }
+
                         // Download Fabric Loader (0.16.7)
                         const loaderUrl = 'https://maven.fabricmc.net/net/fabricmc/fabric-loader/0.16.7/fabric-loader-0.16.7.jar';
                         const loaderPath = await this.downloadFile(loaderUrl, librariesDir, 'fabric-loader-0.16.7.jar', event.sender);
