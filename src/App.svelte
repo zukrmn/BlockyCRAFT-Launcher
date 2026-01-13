@@ -5,6 +5,7 @@
   import ChangelogPanel from "./lib/components/ChangelogPanel.svelte";
   import DonatorsPanel from "./lib/components/DonatorsPanel.svelte";
   import LanguageToggle from "./lib/components/LanguageToggle.svelte";
+  import SettingsModal from "./lib/components/SettingsModal.svelte";
   import { i18n } from "./lib/stores/i18n.svelte";
   import "./styles/theme.css";
 
@@ -75,6 +76,7 @@
     <div class="right-column">
       <div class="lang-area">
         <LanguageToggle />
+        <SettingsModal />
       </div>
       <div class="panel-area donators-area">
         <DonatorsPanel />
@@ -128,7 +130,8 @@
 
   .lang-area {
     display: flex;
-    justify-content: flex-end; /* Align to right? Or left? "Above Apoiadores" implies standard flow, maybe right aligned looks better contextually */
+    justify-content: flex-end;
+    gap: var(--spacing-sm);
   }
 
   .panel-area {

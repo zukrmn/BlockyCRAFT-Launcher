@@ -13,11 +13,18 @@ export const ElectronService = {
     isAvailable: !!electron,
 
     async launchGame(username: string): Promise<{ success: boolean; error?: string }> {
+        // Gather settings from localStorage
+        const settings = {
+            minMemory: localStorage.getItem("settings.minMemory") || "512",
+            maxMemory: localStorage.getItem("settings.maxMemory") || "2048",
+            javaArgs: localStorage.getItem("settings.javaArgs") || ""
+        };
+
         if (!electron) {
-            console.warn('[Mock] Launching game for:', username);
+            console.warn('[Mock] Launching game for:', username, 'with settings:', settings);
             return new Promise(resolve => setTimeout(() => resolve({ success: true }), 3000));
         }
-        return electron.invoke('launch-game', { username });
+        return electron.invoke('launch-game', { username, settings });
     },
 
     async checkForUpdates(): Promise<{ available: boolean; version?: string; notes?: string }> {

@@ -3881,7 +3881,12 @@ var GameHandler = class {
         }
       }
       this.sendProgress(event.sender, "Iniciando Jogo...", 95);
+      const minMem = options.settings?.minMemory || "512";
+      const maxMem = options.settings?.maxMemory || "2048";
+      const customArgs = options.settings?.javaArgs || "";
       const launchArgs = [
+        `-Xms${minMem}M`,
+        `-Xmx${maxMem}M`,
         "-Djava.library.path=" + nativesDir,
         "-Dorg.lwjgl.librarypath=" + nativesDir,
         // Fix for some lwjgl versions
@@ -3893,11 +3898,14 @@ var GameHandler = class {
         // Disable legacy resource downloads from defunct S3 bucket
         "-Dminecraft.resources.index=" + import_path4.default.join(dotMinecraft, "resources"),
         "-Dminecraft.applet.TargetDirectory=" + dotMinecraft,
-        "-Dminecraft.applet.BaseURL=file:///",
-        "-cp",
-        classpath.join(import_path4.default.delimiter),
-        mainClass
+        "-Dminecraft.applet.BaseURL=file:///"
       ];
+      if (customArgs.trim()) {
+        const customArgsArray = customArgs.trim().split(/\s+/).filter((arg) => arg.length > 0);
+        launchArgs.push(...customArgsArray);
+      }
+      launchArgs.push("-cp", classpath.join(import_path4.default.delimiter));
+      launchArgs.push(mainClass);
       launchArgs.push("--username", options.username);
       launchArgs.push("--gameDir", dotMinecraft);
       launchArgs.push("--assetsDir", import_path4.default.join(dotMinecraft, "resources"));
