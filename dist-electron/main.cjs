@@ -3720,6 +3720,39 @@ var GameHandler = class {
             }
           }
         }
+        const openalPath = import_path4.default.join(nativesDir, process.platform === "win32" ? "OpenAL64.dll" : "libopenal.so");
+        if (!import_fs6.default.existsSync(openalPath)) {
+          console.log("[GameHandler] OpenAL not found, downloading from Legacy Fabric...");
+          this.sendProgress(event.sender, "Baixando OpenAL...", 72);
+          let lwjglClassifier = "natives-linux";
+          if (process.platform === "win32") lwjglClassifier = "natives-windows";
+          else if (process.platform === "darwin") lwjglClassifier = "natives-osx";
+          const lwjglNativeUrl = `https://repo.legacyfabric.net/repository/legacyfabric/org/lwjgl/lwjgl/lwjgl-platform/2.9.4+legacyfabric.9/lwjgl-platform-2.9.4+legacyfabric.9-${lwjglClassifier}.jar`;
+          try {
+            const tempLwjglPath = await this.downloadFile(lwjglNativeUrl, import_path4.default.join(gameRoot, "temp_natives"), `lwjgl-platform-${lwjglClassifier}.jar`, event.sender);
+            if (validateZipFile(tempLwjglPath)) {
+              const zip = new import_adm_zip3.default(tempLwjglPath);
+              zip.extractAllTo(nativesDir, true);
+              console.log("[GameHandler] OpenAL natives extracted successfully");
+              if (process.platform === "win32") {
+                const openalRenames = [
+                  { from: "OpenAL-amd64.dll", to: "OpenAL64.dll" },
+                  { from: "OpenAL-i386.dll", to: "OpenAL32.dll" }
+                ];
+                for (const rename of openalRenames) {
+                  const srcPath = import_path4.default.join(nativesDir, rename.from);
+                  const destPath = import_path4.default.join(nativesDir, rename.to);
+                  if (import_fs6.default.existsSync(srcPath) && !import_fs6.default.existsSync(destPath)) {
+                    console.log(`[GameHandler] Renaming ${rename.from} -> ${rename.to}`);
+                    import_fs6.default.copyFileSync(srcPath, destPath);
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.warn("[GameHandler] Failed to download OpenAL natives:", e);
+          }
+        }
       }
       let classpath = [mcJarPath];
       let mainClass = "net.minecraft.client.Minecraft";
@@ -3732,12 +3765,15 @@ var GameHandler = class {
           if (fabricComponent) {
             this.sendProgress(event.sender, "Configurando Fabric/StationAPI...", 75);
             const fabricLibs = [
+              // ASM (Required by Mixin)
               { name: "asm:9.7.1", group: "org.ow2.asm", artifact: "asm", version: "9.7.1" },
               { name: "asm-analysis:9.7.1", group: "org.ow2.asm", artifact: "asm-analysis", version: "9.7.1" },
               { name: "asm-commons:9.7.1", group: "org.ow2.asm", artifact: "asm-commons", version: "9.7.1" },
               { name: "asm-tree:9.7.1", group: "org.ow2.asm", artifact: "asm-tree", version: "9.7.1" },
               { name: "asm-util:9.7.1", group: "org.ow2.asm", artifact: "asm-util", version: "9.7.1" },
+              // Mixin
               { name: "sponge-mixin:0.15.3+mixin.0.8.7", group: "net.fabricmc", artifact: "sponge-mixin", version: "0.15.3+mixin.0.8.7" },
+              { name: "mixinextras-fabric:0.4.1", group: "io.github.llamalad7", artifact: "mixinextras-fabric", version: "0.4.1" },
               // Commons (Required by StationAPI/Fabric)
               { name: "commons-lang3:3.12.0", group: "org.apache.commons", artifact: "commons-lang3", version: "3.12.0" },
               { name: "commons-io:2.11.0", group: "commons-io", artifact: "commons-io", version: "2.11.0" },
@@ -3747,18 +3783,25 @@ var GameHandler = class {
               { name: "jinput:2.0.5", group: "net.java.jinput", artifact: "jinput", version: "2.0.5" },
               { name: "lwjgl:2.9.4+legacyfabric.9", group: "org.lwjgl.lwjgl", artifact: "lwjgl", version: "2.9.4+legacyfabric.9" },
               { name: "lwjgl_util:2.9.4+legacyfabric.9", group: "org.lwjgl.lwjgl", artifact: "lwjgl_util", version: "2.9.4+legacyfabric.9" },
-              // Log4j 2 (Required by many Fabric mods/Loader)
-              { name: "log4j-api:2.22.1", group: "org.apache.logging.log4j", artifact: "log4j-api", version: "2.22.1" },
-              { name: "log4j-core:2.22.1", group: "org.apache.logging.log4j", artifact: "log4j-core", version: "2.22.1" },
+              // Logging (Prism uses these exact versions)
+              { name: "log4j-api:2.16.0", group: "org.apache.logging.log4j", artifact: "log4j-api", version: "2.16.0" },
+              { name: "log4j-core:2.16.0", group: "org.apache.logging.log4j", artifact: "log4j-core", version: "2.16.0" },
+              { name: "log4j-slf4j18-impl:2.16.0", group: "org.apache.logging.log4j", artifact: "log4j-slf4j18-impl", version: "2.16.0" },
+              { name: "terminalconsoleappender:1.2.0", group: "net.minecrell", artifact: "terminalconsoleappender", version: "1.2.0" },
+              // SLF4J (Prism uses 1.8.0-beta4)
+              { name: "slf4j-api:1.8.0-beta4", group: "org.slf4j", artifact: "slf4j-api", version: "1.8.0-beta4" },
               // Guava (Critical for modern Fabric/Mixin on older MC)
               { name: "guava:31.0.1-jre", group: "com.google.guava", artifact: "guava", version: "31.0.1-jre" },
               { name: "failureaccess:1.0.1", group: "com.google.guava", artifact: "failureaccess", version: "1.0.1" },
-              // SLF4J (Required by StationAPI)
-              { name: "slf4j-api:2.0.16", group: "org.slf4j", artifact: "slf4j-api", version: "2.0.16" }
+              // GSON (Required by Fabric)
+              { name: "gson:2.8.9", group: "com.google.code.gson", artifact: "gson", version: "2.8.9" },
+              // Babric Log4j Config (from Prism log)
+              { name: "log4j-config:1.0.0", group: "babric", artifact: "log4j-config", version: "1.0.0" }
             ];
             const fabricBase = "https://maven.fabricmc.net/";
             const mavenCentral = "https://repo1.maven.org/maven2/";
             const legacyFabricRepo = "https://repo.legacyfabric.net/repository/legacyfabric/";
+            const babricRepo = "https://maven.glass-launcher.net/babric/";
             const markerV2 = import_path4.default.join(librariesDir, ".bundled_extracted_v2");
             const markerV1 = import_path4.default.join(librariesDir, ".bundled_extracted_v1");
             const asmExists = import_path4.default.join(librariesDir, "org", "ow2", "asm", "asm", "9.7.1", "asm-9.7.1.jar");
@@ -3822,10 +3865,26 @@ var GameHandler = class {
                 continue;
               }
               let url = fabricBase + pathStr;
-              if (lib.group.startsWith("org.apache") || lib.group === "commons-io" || lib.group === "commons-codec" || lib.group === "net.java.jutils" || lib.group === "net.java.jinput" || lib.group.startsWith("org.ow2.asm") || lib.group.startsWith("com.google.guava") || lib.group.startsWith("org.slf4j")) {
+              const mavenCentralGroups = [
+                "org.apache",
+                "commons-io",
+                "commons-codec",
+                "net.java.jutils",
+                "net.java.jinput",
+                "org.ow2.asm",
+                "com.google.guava",
+                "com.google.code.gson",
+                "org.slf4j",
+                "io.github.llamalad7",
+                "net.minecrell"
+              ];
+              const isMavenCentral = mavenCentralGroups.some((g) => lib.group.startsWith(g) || lib.group === g);
+              if (isMavenCentral) {
                 url = mavenCentral + pathStr;
               } else if (lib.group.startsWith("org.lwjgl")) {
                 url = legacyFabricRepo + pathStr;
+              } else if (lib.group === "babric") {
+                url = babricRepo + pathStr;
               }
               const libPath = await this.downloadFile(url, librariesDir, `${lib.artifact}-${lib.version}.jar`, event.sender);
               classpath.push(libPath);
