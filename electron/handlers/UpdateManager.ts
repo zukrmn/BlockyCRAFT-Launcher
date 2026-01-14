@@ -19,9 +19,9 @@ interface RemoteVersionInfo {
         version: string;
         url: UrlOrUrls;  // Can be string or string[] for fallback URLs
     };
-    libraries: {
+    libraries?: {  // Optional - libraries are now downloaded from Maven repos
         version: string;
-        url: UrlOrUrls;  // Can be string or string[] for fallback URLs
+        url: UrlOrUrls;
     };
     mods?: {
         version: string;
@@ -148,18 +148,19 @@ export class UpdateManager {
         }
 
         const instanceUpdate = remoteVersions.instance.version !== localVersions.instance;
-        const librariesUpdate = remoteVersions.libraries.version !== localVersions.libraries;
+        // Libraries are now downloaded directly from Maven repos, not from VPS
+        const librariesUpdate = false; // Disabled - see GameHandler for Maven-based downloads
         const modsUpdate = remoteVersions.mods ?
             remoteVersions.mods.version !== localVersions.mods : false;
 
         console.log('[UpdateManager] Update check result:', {
             instanceUpdate,
-            librariesUpdate,
+            librariesUpdate: 'DISABLED (Maven-based)',
             modsUpdate,
             local: localVersions,
             remote: {
                 instance: remoteVersions.instance.version,
-                libraries: remoteVersions.libraries.version,
+                libraries: remoteVersions.libraries?.version ?? 'N/A (Maven-based)',
                 mods: remoteVersions.mods?.version
             }
         });
@@ -330,14 +331,20 @@ export class UpdateManager {
             }
         }
     }
-
     /**
      * Performs libraries update
+     * @deprecated Libraries are now downloaded from Maven repos directly in GameHandler
      */
     public async updateLibraries(
         remoteVersions: RemoteVersionInfo,
         progressCallback?: (status: string, percent: number) => void
     ): Promise<void> {
+        // Libraries are now downloaded from Maven repos, this function is deprecated
+        if (!remoteVersions.libraries) {
+            console.log('[UpdateManager] Libraries update skipped - using Maven repos');
+            return;
+        }
+
         const tempZip = path.join(this.dataPath, 'temp_libraries.zip');
 
         try {
