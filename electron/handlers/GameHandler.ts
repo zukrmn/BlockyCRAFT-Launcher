@@ -229,13 +229,26 @@ export class GameHandler {
                 }
             }
 
-            fileStream.end();
+            // Wait for the file stream to fully close (important for Windows)
+            await new Promise<void>((resolve, reject) => {
+                fileStream.on('finish', resolve);
+                fileStream.on('error', reject);
+                fileStream.end();
+            });
 
             // Validate file size for jars (sanity check)
             const stats = fs.statSync(filePath);
             if (filename.endsWith('.jar') && stats.size < 100) {
                 fs.unlinkSync(filePath);
                 throw new Error(`Downloaded file ${filename} is too small (${stats.size} bytes). Likely invalid.`);
+            }
+
+            // Validate ZIP files
+            if (filename.endsWith('.zip') && !validateZipFile(filePath)) {
+                const buffer = fs.readFileSync(filePath);
+                const firstBytes = buffer.slice(0, 20).toString('hex');
+                fs.unlinkSync(filePath);
+                throw new Error(`Downloaded file ${filename} is not a valid ZIP (first bytes: ${firstBytes}). Server may have returned an error page.`);
             }
 
             return filePath;
@@ -355,8 +368,13 @@ export class GameHandler {
                         // Implementation: Download zip to temp, unzip to nativesDir.
 
                         const tempNativePath = await this.downloadFile(native.url, path.join(gameRoot, 'temp_natives'), path.basename(native.path), event.sender);
-                        const zip = new AdmZip(tempNativePath);
-                        zip.extractAllTo(nativesDir, true);
+                        // Validate and extract the native jar
+                        if (validateZipFile(tempNativePath)) {
+                            const zip = new AdmZip(tempNativePath);
+                            zip.extractAllTo(nativesDir, true);
+                        } else {
+                            console.warn(`[GameHandler] Skipping invalid native file: ${tempNativePath}`);
+                        }
                     }
                 }
             }
