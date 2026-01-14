@@ -3843,6 +3843,34 @@ var GameHandler = class {
               const tempPath = await this.downloadFile(url, import_path4.default.join(gameRoot, "temp_natives"), filename, event.sender);
               await safeExtractZipWithRetry(tempPath, nativesDir);
             }
+            if (process.platform === "darwin") {
+              try {
+                const files = import_fs6.default.readdirSync(nativesDir);
+                for (const file of files) {
+                  if (file.endsWith(".jnilib")) {
+                    const oldPath = import_path4.default.join(nativesDir, file);
+                    const newPath = import_path4.default.join(nativesDir, file.replace(".jnilib", ".dylib"));
+                    if (import_fs6.default.existsSync(oldPath)) {
+                      console.log(`[GameHandler] Renaming ${file} to .dylib`);
+                      try {
+                        if (import_fs6.default.existsSync(newPath)) import_fs6.default.unlinkSync(newPath);
+                        import_fs6.default.renameSync(oldPath, newPath);
+                      } catch (renameErr) {
+                        console.warn(`[GameHandler] Failed to rename ${file}:`, renameErr);
+                      }
+                    }
+                  }
+                }
+              } catch (e) {
+                console.warn("[GameHandler] Failed to process macOS natives:", e);
+              }
+            }
+            try {
+              const nativesContents = import_fs6.default.readdirSync(nativesDir);
+              console.log(`[GameHandler] Natives folder contents (${nativesDir}):`, nativesContents);
+            } catch (e) {
+              console.error("[GameHandler] Failed to read natives folder:", e);
+            }
             const loaderUrl = "https://maven.fabricmc.net/net/fabricmc/fabric-loader/0.16.7/fabric-loader-0.16.7.jar";
             const loaderPath = await this.downloadFile(loaderUrl, librariesDir, "fabric-loader-0.16.7.jar", event.sender);
             const intermediaryUrl = "https://maven.glass-launcher.net/babric/babric/intermediary-upstream/b1.7.3/intermediary-upstream-b1.7.3.jar";
@@ -3874,12 +3902,47 @@ var GameHandler = class {
       const minMem = options.settings?.minMemory || "512";
       const maxMem = options.settings?.maxMemory || "2048";
       const customArgs = options.settings?.javaArgs || "";
+      let openalLibPath = "";
+      try {
+        if (import_fs6.default.existsSync(nativesDir)) {
+          const nativesFiles = import_fs6.default.readdirSync(nativesDir);
+          const priorities = [
+            "OpenAL64.dll",
+            "OpenAL32.dll",
+            "OpenAL-amd64.dll",
+            "OpenAL-i386.dll",
+            // Windows
+            "libopenal.so",
+            // Linux
+            "libopenal.dylib",
+            "openal.dylib"
+            // macOS
+          ];
+          for (const p of priorities) {
+            if (nativesFiles.includes(p)) {
+              openalLibPath = import_path4.default.join(nativesDir, p);
+              console.log(`[GameHandler] Found OpenAL library: ${openalLibPath}`);
+              break;
+            }
+          }
+          if (!openalLibPath) {
+            const found = nativesFiles.find((f) => f.toLowerCase().includes("openal") && (f.endsWith(".dll") || f.endsWith(".so") || f.endsWith(".dylib")));
+            if (found) {
+              openalLibPath = import_path4.default.join(nativesDir, found);
+              console.log(`[GameHandler] Found OpenAL library (fallback): ${openalLibPath}`);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[GameHandler] Failed to scan for OpenAL lib:", e);
+      }
       const launchArgs = [
         `-Xms${minMem}M`,
         `-Xmx${maxMem}M`,
         "-Djava.library.path=" + nativesDir,
         "-Dorg.lwjgl.librarypath=" + nativesDir,
         // Fix for some lwjgl versions
+        openalLibPath ? "-Dorg.lwjgl.openal.libname=" + openalLibPath : "",
         "-Dfabric.gameJarPath=" + mcJarPath,
         "-Dfabric.gameVersion=b1.7.3",
         "-Dfabric.envType=client",
