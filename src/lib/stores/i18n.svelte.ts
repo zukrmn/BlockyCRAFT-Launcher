@@ -52,7 +52,35 @@ export const translations: Record<string, Record<string, string>> = {
     }
 };
 
-let currentLang = $state("pt-BR");
+const STORAGE_KEY = 'launcher_language';
+
+function getInitialLang(): "en-US" | "pt-BR" | "es-ES" {
+    // 1. Check LocalStorage
+    try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved && (saved === 'en-US' || saved === 'pt-BR' || saved === 'es-ES')) {
+            return saved;
+        }
+    } catch (e) {
+        console.warn('Failed to access localStorage:', e);
+    }
+
+    // 2. Check System Language
+    try {
+        const systemLang = navigator.language || navigator.languages[0];
+        if (systemLang) {
+            if (systemLang.toLowerCase().startsWith('pt')) return 'pt-BR';
+            if (systemLang.toLowerCase().startsWith('es')) return 'es-ES';
+        }
+    } catch (e) {
+        console.warn('Failed to detect system language:', e);
+    }
+
+    // 3. Default fallback
+    return 'en-US';
+}
+
+let currentLang = $state(getInitialLang());
 
 export const i18n = {
     get lang() {
@@ -60,6 +88,11 @@ export const i18n = {
     },
     setLang(lang: "en-US" | "pt-BR" | "es-ES") {
         currentLang = lang;
+        try {
+            localStorage.setItem(STORAGE_KEY, lang);
+        } catch (e) {
+            console.warn('Failed to save language preference:', e);
+        }
     },
     t(key: string) {
         const langData = translations[currentLang] as Record<string, string>;
