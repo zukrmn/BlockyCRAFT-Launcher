@@ -3710,7 +3710,7 @@ var GameHandler = class {
             }
           }
         }
-        const openalPath = import_path4.default.join(nativesDir, process.platform === "win32" ? "OpenAL64.dll" : "libopenal.so");
+        const openalPath = import_path4.default.join(nativesDir, process.platform === "win32" ? "OpenAL-amd64.dll" : "libopenal.so");
         if (!import_fs6.default.existsSync(openalPath)) {
           console.log("[GameHandler] OpenAL not found, downloading from Legacy Fabric...");
           this.sendProgress(event.sender, "Baixando OpenAL...", 72);
@@ -3815,6 +3815,11 @@ var GameHandler = class {
               classpath.push(libPath);
             }
             this.sendProgress(event.sender, "Baixando nativos...", 78);
+            if (import_fs6.default.existsSync(nativesDir)) {
+              console.log("[GameHandler] Clearing natives folder for fresh extraction...");
+              import_fs6.default.rmSync(nativesDir, { recursive: true, force: true });
+            }
+            import_fs6.default.mkdirSync(nativesDir, { recursive: true });
             let classifier = "natives-linux";
             if (process.platform === "win32") classifier = "natives-windows";
             else if (process.platform === "darwin") classifier = "natives-osx";

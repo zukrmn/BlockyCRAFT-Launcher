@@ -369,8 +369,8 @@ export class GameHandler {
                 }
 
                 // Ensure OpenAL is available (fallback for vanilla mode)
-                // The Mojang natives may not include OpenAL, so download from Legacy Fabric
-                const openalPath = path.join(nativesDir, process.platform === 'win32' ? 'OpenAL64.dll' : 'libopenal.so');
+                // Legacy Fabric LWJGL uses OpenAL-amd64.dll / OpenAL-i386.dll naming
+                const openalPath = path.join(nativesDir, process.platform === 'win32' ? 'OpenAL-amd64.dll' : 'libopenal.so');
                 if (!fs.existsSync(openalPath)) {
                     console.log('[GameHandler] OpenAL not found, downloading from Legacy Fabric...');
                     this.sendProgress(event.sender, 'Baixando OpenAL...', 72);
@@ -493,6 +493,13 @@ export class GameHandler {
 
                         // Download Legacy Fabric Natives (Crucial for LWJGL 2.9.4+legacyfabric.9)
                         this.sendProgress(event.sender, 'Baixando nativos...', 78);
+
+                        // Clear natives folder to ensure fresh extraction (fixes issues with renamed/corrupted files)
+                        if (fs.existsSync(nativesDir)) {
+                            console.log('[GameHandler] Clearing natives folder for fresh extraction...');
+                            fs.rmSync(nativesDir, { recursive: true, force: true });
+                        }
+                        fs.mkdirSync(nativesDir, { recursive: true });
 
                         let classifier = 'natives-linux';
                         if (process.platform === 'win32') classifier = 'natives-windows';
