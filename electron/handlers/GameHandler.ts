@@ -483,87 +483,19 @@ export class GameHandler {
                         const legacyFabricRepo = 'https://repo.legacyfabric.net/repository/legacyfabric/';
                         const babricRepo = 'https://maven.glass-launcher.net/babric/';
 
-                        // 0. Check for bundled libraries.zip and extract if needed
-                        // Skip if UpdateManager already extracted libraries (check for v2 marker or existing maven structure)
-                        const markerV2 = path.join(librariesDir, '.bundled_extracted_v2');
-                        const markerV1 = path.join(librariesDir, '.bundled_extracted_v1');
-                        const asmExists = path.join(librariesDir, 'org', 'ow2', 'asm', 'asm', '9.7.1', 'asm-9.7.1.jar');
-
-                        const librariesAlreadyExtracted = fs.existsSync(markerV2) || fs.existsSync(markerV1) || fs.existsSync(asmExists);
-
-                        if (!librariesAlreadyExtracted) {
-                            let bundledLibsZip = path.join(app.getPath('userData'), 'libraries.zip');
-
-                            // DOWNLOAD libraries.zip IF MISSING (VPS Support - only if UpdateManager didn't handle it)
-                            if (!fs.existsSync(bundledLibsZip)) {
-                                console.log('libraries.zip not found locally. Attempting to download from VPS...');
-                                this.sendProgress(event.sender, 'Baixando bibliotecas do servidor...', 68);
-
-                                const libsUrls = [
-                                    'https://marina.rodrigorocha.art.br/launcher-assets/libraries.zip',
-                                    'https://craft.blocky.com.br/launcher-assets/libraries.zip'
-                                ];
-
-                                let downloaded = false;
-                                for (const vpsUrl of libsUrls) {
-                                    try {
-                                        console.log(`Trying to download libraries.zip from ${vpsUrl}...`);
-                                        await this.downloadFile(vpsUrl, path.dirname(bundledLibsZip), 'libraries.zip', event.sender);
-                                        downloaded = true;
-                                        break; // Success, exit loop
-                                    } catch (e) {
-                                        console.warn(`Failed to download libraries.zip from ${vpsUrl}:`, e);
-                                        // Continue to next URL
-                                    }
-                                }
-
-                                if (!downloaded) {
-                                    console.error('Failed to download libraries.zip from all sources. Game might crash if libraries are missing.');
-                                }
-                            }
-
-                            if (fs.existsSync(bundledLibsZip)) {
-                            // Extract if we haven't marked it as extracted
-                                this.sendProgress(event.sender, 'Extraindo bibliotecas locais (libraries.zip)...', 72);
-                                console.log('Found libraries.zip, extracting...');
-                                try {
-                                    if (!fs.existsSync(librariesDir)) fs.mkdirSync(librariesDir, { recursive: true });
-                                    safeExtractZip(bundledLibsZip, librariesDir);
-                                    fs.writeFileSync(markerV1, 'extracted');
-                                    console.log('Libraries extracted successfully.');
-                                } catch (e) {
-                                    console.error('Failed to extract libraries.zip:', e);
-                                }
-                            }
-                        } else {
-                            console.log('[GameHandler] Libraries already extracted by UpdateManager, skipping legacy download');
+                        // Libraries are downloaded directly from Maven repos (no VPS libraries.zip)
+                        console.log('[GameHandler] Using Maven-based library downloads');
+                        if (!fs.existsSync(librariesDir)) {
+                            fs.mkdirSync(librariesDir, { recursive: true });
                         }
 
                         for (const lib of fabricLibs) {
                             const pathStr = `${lib.group.replace(/\./g, '/')}/${lib.artifact}/${lib.version}/${lib.artifact}-${lib.version}.jar`;
+                            const localPath = path.join(librariesDir, `${lib.artifact}-${lib.version}.jar`);
 
-                            // 1. Check Local Existence
-                            // a) Check flat structure (if downloaded previously)
-                            const flatDest = path.join(librariesDir, `${lib.artifact}-${lib.version}.jar`);
-                            if (fs.existsSync(flatDest)) {
-                                classpath.push(flatDest);
-                                continue;
-                            }
-
-                            // b) Check Maven structure (from libraries.zip extraction)
-                            // The zip often contains 'libraries/com/...' so we check that relative to librariesDir
-                            const mavenDest = path.join(librariesDir, 'libraries', pathStr);
-                            if (fs.existsSync(mavenDest)) {
-                                console.log(`[Cache] Found library (maven struct): ${lib.artifact}`);
-                                classpath.push(mavenDest);
-                                continue;
-                            }
-
-                            // c) Check Maven structure (direct, if zip was just com/...)
-                            const mavenDirect = path.join(librariesDir, pathStr);
-                            if (fs.existsSync(mavenDirect)) {
-                                console.log(`[Cache] Found library (direct maven): ${lib.artifact}`);
-                                classpath.push(mavenDirect);
+                            // Check if already downloaded
+                            if (fs.existsSync(localPath)) {
+                                classpath.push(localPath);
                                 continue;
                             }
 
@@ -606,23 +538,13 @@ export class GameHandler {
 
                         for (const native of nativesList) {
                             const filename = `${native.artifact}-${native.version}-${native.classifier}.jar`;
-
-                            // 1. Check if we already have this native jar (e.g. from libraries.zip)
-                            // We check both flat and maven structure, similar to libraries
                             const pathStr = `${native.group.replace(/\./g, '/')}/${native.artifact}/${native.version}/${filename}`;
-                            const flatPath = path.join(librariesDir, filename);
-                            const mavenPath = path.join(librariesDir, 'libraries', pathStr);
-                            const mavenDirect = path.join(librariesDir, pathStr);
+                            const localPath = path.join(librariesDir, filename);
 
-                            let sourceZip = null;
-
-                            if (fs.existsSync(flatPath)) sourceZip = flatPath;
-                            else if (fs.existsSync(mavenPath)) sourceZip = mavenPath;
-                            else if (fs.existsSync(mavenDirect)) sourceZip = mavenDirect;
-
-                            if (sourceZip) {
+                            // Check if already downloaded
+                            if (fs.existsSync(localPath)) {
                                 console.log(`[Cache] Found native library locally: ${filename}`);
-                                await safeExtractZipWithRetry(sourceZip, nativesDir);
+                                await safeExtractZipWithRetry(localPath, nativesDir);
                                 continue;
                             }
 

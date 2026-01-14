@@ -3209,16 +3209,16 @@ var UpdateManager = class {
       };
     }
     const instanceUpdate = remoteVersions.instance.version !== localVersions.instance;
-    const librariesUpdate = remoteVersions.libraries.version !== localVersions.libraries;
+    const librariesUpdate = false;
     const modsUpdate = remoteVersions.mods ? remoteVersions.mods.version !== localVersions.mods : false;
     console.log("[UpdateManager] Update check result:", {
       instanceUpdate,
-      librariesUpdate,
+      librariesUpdate: "DISABLED (Maven-based)",
       modsUpdate,
       local: localVersions,
       remote: {
         instance: remoteVersions.instance.version,
-        libraries: remoteVersions.libraries.version,
+        libraries: remoteVersions.libraries?.version ?? "N/A (Maven-based)",
         mods: remoteVersions.mods?.version
       }
     });
@@ -3334,8 +3334,13 @@ var UpdateManager = class {
   }
   /**
    * Performs libraries update
+   * @deprecated Libraries are now downloaded from Maven repos directly in GameHandler
    */
   async updateLibraries(remoteVersions, progressCallback) {
+    if (!remoteVersions.libraries) {
+      console.log("[UpdateManager] Libraries update skipped - using Maven repos");
+      return;
+    }
     const tempZip = import_path3.default.join(this.dataPath, "temp_libraries.zip");
     try {
       await this.downloadFile(remoteVersions.libraries.url, tempZip, progressCallback);
@@ -3802,66 +3807,15 @@ var GameHandler = class {
             const mavenCentral = "https://repo1.maven.org/maven2/";
             const legacyFabricRepo = "https://repo.legacyfabric.net/repository/legacyfabric/";
             const babricRepo = "https://maven.glass-launcher.net/babric/";
-            const markerV2 = import_path4.default.join(librariesDir, ".bundled_extracted_v2");
-            const markerV1 = import_path4.default.join(librariesDir, ".bundled_extracted_v1");
-            const asmExists = import_path4.default.join(librariesDir, "org", "ow2", "asm", "asm", "9.7.1", "asm-9.7.1.jar");
-            const librariesAlreadyExtracted = import_fs6.default.existsSync(markerV2) || import_fs6.default.existsSync(markerV1) || import_fs6.default.existsSync(asmExists);
-            if (!librariesAlreadyExtracted) {
-              let bundledLibsZip = import_path4.default.join(import_electron4.app.getPath("userData"), "libraries.zip");
-              if (!import_fs6.default.existsSync(bundledLibsZip)) {
-                console.log("libraries.zip not found locally. Attempting to download from VPS...");
-                this.sendProgress(event.sender, "Baixando bibliotecas do servidor...", 68);
-                const libsUrls = [
-                  "https://marina.rodrigorocha.art.br/launcher-assets/libraries.zip",
-                  "https://craft.blocky.com.br/launcher-assets/libraries.zip"
-                ];
-                let downloaded = false;
-                for (const vpsUrl of libsUrls) {
-                  try {
-                    console.log(`Trying to download libraries.zip from ${vpsUrl}...`);
-                    await this.downloadFile(vpsUrl, import_path4.default.dirname(bundledLibsZip), "libraries.zip", event.sender);
-                    downloaded = true;
-                    break;
-                  } catch (e) {
-                    console.warn(`Failed to download libraries.zip from ${vpsUrl}:`, e);
-                  }
-                }
-                if (!downloaded) {
-                  console.error("Failed to download libraries.zip from all sources. Game might crash if libraries are missing.");
-                }
-              }
-              if (import_fs6.default.existsSync(bundledLibsZip)) {
-                this.sendProgress(event.sender, "Extraindo bibliotecas locais (libraries.zip)...", 72);
-                console.log("Found libraries.zip, extracting...");
-                try {
-                  if (!import_fs6.default.existsSync(librariesDir)) import_fs6.default.mkdirSync(librariesDir, { recursive: true });
-                  safeExtractZip(bundledLibsZip, librariesDir);
-                  import_fs6.default.writeFileSync(markerV1, "extracted");
-                  console.log("Libraries extracted successfully.");
-                } catch (e) {
-                  console.error("Failed to extract libraries.zip:", e);
-                }
-              }
-            } else {
-              console.log("[GameHandler] Libraries already extracted by UpdateManager, skipping legacy download");
+            console.log("[GameHandler] Using Maven-based library downloads");
+            if (!import_fs6.default.existsSync(librariesDir)) {
+              import_fs6.default.mkdirSync(librariesDir, { recursive: true });
             }
             for (const lib of fabricLibs) {
               const pathStr = `${lib.group.replace(/\./g, "/")}/${lib.artifact}/${lib.version}/${lib.artifact}-${lib.version}.jar`;
-              const flatDest = import_path4.default.join(librariesDir, `${lib.artifact}-${lib.version}.jar`);
-              if (import_fs6.default.existsSync(flatDest)) {
-                classpath.push(flatDest);
-                continue;
-              }
-              const mavenDest = import_path4.default.join(librariesDir, "libraries", pathStr);
-              if (import_fs6.default.existsSync(mavenDest)) {
-                console.log(`[Cache] Found library (maven struct): ${lib.artifact}`);
-                classpath.push(mavenDest);
-                continue;
-              }
-              const mavenDirect = import_path4.default.join(librariesDir, pathStr);
-              if (import_fs6.default.existsSync(mavenDirect)) {
-                console.log(`[Cache] Found library (direct maven): ${lib.artifact}`);
-                classpath.push(mavenDirect);
+              const localPath2 = import_path4.default.join(librariesDir, `${lib.artifact}-${lib.version}.jar`);
+              if (import_fs6.default.existsSync(localPath2)) {
+                classpath.push(localPath2);
                 continue;
               }
               let url = fabricBase + pathStr;
@@ -3900,16 +3854,10 @@ var GameHandler = class {
             for (const native of nativesList) {
               const filename = `${native.artifact}-${native.version}-${native.classifier}.jar`;
               const pathStr = `${native.group.replace(/\./g, "/")}/${native.artifact}/${native.version}/${filename}`;
-              const flatPath = import_path4.default.join(librariesDir, filename);
-              const mavenPath = import_path4.default.join(librariesDir, "libraries", pathStr);
-              const mavenDirect = import_path4.default.join(librariesDir, pathStr);
-              let sourceZip = null;
-              if (import_fs6.default.existsSync(flatPath)) sourceZip = flatPath;
-              else if (import_fs6.default.existsSync(mavenPath)) sourceZip = mavenPath;
-              else if (import_fs6.default.existsSync(mavenDirect)) sourceZip = mavenDirect;
-              if (sourceZip) {
+              const localPath2 = import_path4.default.join(librariesDir, filename);
+              if (import_fs6.default.existsSync(localPath2)) {
                 console.log(`[Cache] Found native library locally: ${filename}`);
-                await safeExtractZipWithRetry(sourceZip, nativesDir);
+                await safeExtractZipWithRetry(localPath2, nativesDir);
                 continue;
               }
               let url = legacyFabricRepo + pathStr;
