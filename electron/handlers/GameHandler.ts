@@ -535,6 +535,38 @@ export class GameHandler {
                             await safeExtractZipWithRetry(tempPath, nativesDir);
                         }
 
+                        // FIX: macOS .jnilib to .dylib renaming (Prism behavior)
+                        if (process.platform === 'darwin') {
+                            try {
+                                const files = fs.readdirSync(nativesDir);
+                                for (const file of files) {
+                                    if (file.endsWith('.jnilib')) {
+                                        const oldPath = path.join(nativesDir, file);
+                                        const newPath = path.join(nativesDir, file.replace('.jnilib', '.dylib'));
+                                        if (fs.existsSync(oldPath)) {
+                                            console.log(`[GameHandler] Renaming ${file} to .dylib`);
+                                            try {
+                                                if (fs.existsSync(newPath)) fs.unlinkSync(newPath);
+                                                fs.renameSync(oldPath, newPath);
+                                            } catch (renameErr) {
+                                                console.warn(`[GameHandler] Failed to rename ${file}:`, renameErr);
+                                            }
+                                        }
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn('[GameHandler] Failed to process macOS natives:', e);
+                            }
+                        }
+
+                        // Log the contents of natives folder for debugging
+                        try {
+                            const nativesContents = fs.readdirSync(nativesDir);
+                            console.log(`[GameHandler] Natives folder contents (${nativesDir}):`, nativesContents);
+                        } catch (e) {
+                            console.error('[GameHandler] Failed to read natives folder:', e);
+                        }
+
 
                         // Download Fabric Loader (0.16.7)
                         const loaderUrl = 'https://maven.fabricmc.net/net/fabricmc/fabric-loader/0.16.7/fabric-loader-0.16.7.jar';
@@ -594,12 +626,46 @@ export class GameHandler {
             const maxMem = options.settings?.maxMemory || '2048';
             const customArgs = options.settings?.javaArgs || '';
 
+            // Find OpenAL library for -Dorg.lwjgl.openal.libname property
+            let openalLibPath = '';
+            try {
+                if (fs.existsSync(nativesDir)) {
+                    const nativesFiles = fs.readdirSync(nativesDir);
+                    // Prioritize specific names
+                    const priorities = [
+                        'OpenAL64.dll', 'OpenAL32.dll', 'OpenAL-amd64.dll', 'OpenAL-i386.dll', // Windows
+                        'libopenal.so', // Linux
+                        'libopenal.dylib', 'openal.dylib' // macOS
+                    ];
+
+                    for (const p of priorities) {
+                        if (nativesFiles.includes(p)) {
+                            openalLibPath = path.join(nativesDir, p);
+                            console.log(`[GameHandler] Found OpenAL library: ${openalLibPath}`);
+                            break;
+                        }
+                    }
+
+                    // Fallback: search for anything containing "openal"
+                    if (!openalLibPath) {
+                        const found = nativesFiles.find(f => f.toLowerCase().includes('openal') && (f.endsWith('.dll') || f.endsWith('.so') || f.endsWith('.dylib')));
+                        if (found) {
+                            openalLibPath = path.join(nativesDir, found);
+                            console.log(`[GameHandler] Found OpenAL library (fallback): ${openalLibPath}`);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('[GameHandler] Failed to scan for OpenAL lib:', e);
+            }
+
             // Base launch args
             const launchArgs: string[] = [
                 `-Xms${minMem}M`,
                 `-Xmx${maxMem}M`,
                 '-Djava.library.path=' + nativesDir,
                 '-Dorg.lwjgl.librarypath=' + nativesDir, // Fix for some lwjgl versions
+                (openalLibPath ? '-Dorg.lwjgl.openal.libname=' + openalLibPath : ''),
                 '-Dfabric.gameJarPath=' + mcJarPath,
                 '-Dfabric.gameVersion=b1.7.3',
                 '-Dfabric.envType=client',
