@@ -3299,6 +3299,68 @@ var UpdateManager = class {
     console.log(`[UpdateManager] Extraction complete`);
   }
   /**
+   * Backs up user data before update
+   */
+  backupUserData() {
+    const backupDir = import_path3.default.join(this.dataPath, "update_backup");
+    const dotMinecraft = import_path3.default.join(this.instanceDir, ".minecraft");
+    if (import_fs4.default.existsSync(backupDir)) {
+      import_fs4.default.rmSync(backupDir, { recursive: true, force: true });
+    }
+    import_fs4.default.mkdirSync(backupDir, { recursive: true });
+    const itemsToBackup = [
+      "options.txt",
+      "servers.dat",
+      "screenshots",
+      "stats",
+      "lastlogin",
+      // Some old versions use this
+      "config"
+      // Mod configs
+    ];
+    console.log("[UpdateManager] Backing up user data...");
+    for (const item of itemsToBackup) {
+      const src = import_path3.default.join(dotMinecraft, item);
+      const dest = import_path3.default.join(backupDir, item);
+      if (import_fs4.default.existsSync(src)) {
+        try {
+          console.log(`[UpdateManager] Backing up: ${item}`);
+          import_fs4.default.cpSync(src, dest, { recursive: true });
+        } catch (e) {
+          console.warn(`[UpdateManager] Failed to backup ${item}:`, e);
+        }
+      }
+    }
+  }
+  /**
+   * Restores user data after update
+   */
+  restoreUserData() {
+    const backupDir = import_path3.default.join(this.dataPath, "update_backup");
+    const dotMinecraft = import_path3.default.join(this.instanceDir, ".minecraft");
+    if (!import_fs4.default.existsSync(backupDir)) return;
+    console.log("[UpdateManager] Restoring user data...");
+    const items = import_fs4.default.readdirSync(backupDir);
+    for (const item of items) {
+      const src = import_path3.default.join(backupDir, item);
+      const dest = import_path3.default.join(dotMinecraft, item);
+      try {
+        console.log(`[UpdateManager] Restoring: ${item}`);
+        if (import_fs4.default.existsSync(dest)) {
+          import_fs4.default.rmSync(dest, { recursive: true, force: true });
+        }
+        import_fs4.default.cpSync(src, dest, { recursive: true });
+      } catch (e) {
+        console.warn(`[UpdateManager] Failed to restore ${item}:`, e);
+      }
+    }
+    try {
+      import_fs4.default.rmSync(backupDir, { recursive: true, force: true });
+    } catch (e) {
+      console.warn("[UpdateManager] Failed to cleanup backup:", e);
+    }
+  }
+  /**
    * Performs instance update
    */
   async updateInstance(remoteVersions, progressCallback) {
@@ -3306,22 +3368,12 @@ var UpdateManager = class {
     try {
       await this.downloadFile(remoteVersions.instance.url, tempZip, progressCallback);
       progressCallback?.("Preparando atualiza\xE7\xE3o da inst\xE2ncia...", 0);
-      const oldMarker = import_path3.default.join(this.instanceDir, "instance.cfg");
-      if (import_fs4.default.existsSync(oldMarker)) {
-        const optionsPath2 = import_path3.default.join(this.instanceDir, ".minecraft", "options.txt");
-        const optionsBackup2 = import_path3.default.join(this.dataPath, "options_backup.txt");
-        if (import_fs4.default.existsSync(optionsPath2)) {
-          import_fs4.default.copyFileSync(optionsPath2, optionsBackup2);
-        }
+      this.backupUserData();
+      if (import_fs4.default.existsSync(this.instanceDir)) {
       }
       progressCallback?.("Extraindo inst\xE2ncia...", 50);
       this.extractZip(tempZip, this.instanceDir);
-      const optionsBackup = import_path3.default.join(this.dataPath, "options_backup.txt");
-      const optionsPath = import_path3.default.join(this.instanceDir, ".minecraft", "options.txt");
-      if (import_fs4.default.existsSync(optionsBackup)) {
-        import_fs4.default.copyFileSync(optionsBackup, optionsPath);
-        import_fs4.default.unlinkSync(optionsBackup);
-      }
+      this.restoreUserData();
       const localVersions = this.getLocalVersions();
       localVersions.instance = remoteVersions.instance.version;
       this.saveLocalVersions(localVersions);
