@@ -4039,24 +4039,28 @@ function createWindow() {
   mainWindow.setMenu(null);
   import_electron5.ipcMain.handle("open-external", async (event, url) => {
     console.log("Opening external URL:", url);
-    const { shell } = await import("electron");
-    try {
-      await shell.openExternal(url);
-    } catch (err) {
-      console.warn("shell.openExternal failed, opening in internal window:", err);
+    const openInInternalWindow = () => {
+      const { nativeTheme } = require("electron");
+      nativeTheme.themeSource = "dark";
       const win = new import_electron5.BrowserWindow({
         width: 1024,
         height: 800,
         title: "BlockyCRAFT",
         autoHideMenuBar: true,
+        backgroundColor: "#1a1a1a",
         webPreferences: {
           nodeIntegration: false,
-          contextIsolation: true,
-          sandbox: true
+          contextIsolation: true
         }
       });
       win.setMenu(null);
-      await win.loadURL(url);
+      win.loadURL(url);
+    };
+    if (process.platform === "linux") {
+      openInInternalWindow();
+    } else {
+      const { shell } = await import("electron");
+      shell.openExternal(url);
     }
   });
   console.log("Window created, loading content...");
