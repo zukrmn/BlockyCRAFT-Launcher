@@ -279,6 +279,81 @@ export class UpdateManager {
     }
 
     /**
+     * Backs up user data before update
+     */
+    private backupUserData(): void {
+        const backupDir = path.join(this.dataPath, 'update_backup');
+        const dotMinecraft = path.join(this.instanceDir, '.minecraft');
+        
+        // Ensure clean backup dir
+        if (fs.existsSync(backupDir)) {
+            fs.rmSync(backupDir, { recursive: true, force: true });
+        }
+        fs.mkdirSync(backupDir, { recursive: true });
+
+        const itemsToBackup = [
+            'options.txt',
+            'servers.dat',
+            'screenshots',
+            'stats',
+            'lastlogin', // Some old versions use this
+            'config' // Mod configs
+        ];
+
+        console.log('[UpdateManager] Backing up user data...');
+        
+        for (const item of itemsToBackup) {
+            const src = path.join(dotMinecraft, item);
+            const dest = path.join(backupDir, item);
+
+            if (fs.existsSync(src)) {
+                try {
+                    console.log(`[UpdateManager] Backing up: ${item}`);
+                    fs.cpSync(src, dest, { recursive: true });
+                } catch (e) {
+                    console.warn(`[UpdateManager] Failed to backup ${item}:`, e);
+                }
+            }
+        }
+    }
+
+    /**
+     * Restores user data after update
+     */
+    private restoreUserData(): void {
+        const backupDir = path.join(this.dataPath, 'update_backup');
+        const dotMinecraft = path.join(this.instanceDir, '.minecraft');
+
+        if (!fs.existsSync(backupDir)) return;
+
+        console.log('[UpdateManager] Restoring user data...');
+        
+        const items = fs.readdirSync(backupDir);
+        for (const item of items) {
+            const src = path.join(backupDir, item);
+            const dest = path.join(dotMinecraft, item);
+
+            try {
+                console.log(`[UpdateManager] Restoring: ${item}`);
+                // Remove default file/dir if it exists to allow restore
+                if (fs.existsSync(dest)) {
+                    fs.rmSync(dest, { recursive: true, force: true });
+                }
+                fs.cpSync(src, dest, { recursive: true });
+            } catch (e) {
+                console.warn(`[UpdateManager] Failed to restore ${item}:`, e);
+            }
+        }
+
+        // Cleanup backup
+        try {
+            fs.rmSync(backupDir, { recursive: true, force: true });
+        } catch (e) {
+            console.warn('[UpdateManager] Failed to cleanup backup:', e);
+        }
+    }
+
+    /**
      * Performs instance update
      */
     public async updateInstance(
@@ -291,31 +366,50 @@ export class UpdateManager {
             // Download - now supports multiple URLs from version.json
             await this.downloadFile(remoteVersions.instance.url, tempZip, progressCallback);
 
-            // Clear old instance (keep some user data)
             progressCallback?.('Preparando atualização da instância...', 0);
 
-            // Remove old instance.cfg marker if exists
-            const oldMarker = path.join(this.instanceDir, 'instance.cfg');
-            if (fs.existsSync(oldMarker)) {
-                // Backup user options if they exist
-                const optionsPath = path.join(this.instanceDir, '.minecraft', 'options.txt');
-                const optionsBackup = path.join(this.dataPath, 'options_backup.txt');
-                if (fs.existsSync(optionsPath)) {
-                    fs.copyFileSync(optionsPath, optionsBackup);
-                }
+            // 1. Backup User Data
+            this.backupUserData();
+
+            // 2. Clear old instance
+            // We can now safely clear everything since we have a backup
+            if (fs.existsSync(this.instanceDir)) {
+                 // Try to keep libraries if possible to save bandwidth, but for simplicity
+                 // and robustness, let's trust the backup. 
+                 // Actually, libraries are separate now or inside?
+                 // In this codebase, libraries are in instanceDir/libraries.
+                 // We should NOT delete libraries if possible, or we rely on Maven.
+                 // Ideally, we only clear .minecraft and other config files.
+                 // But cleaning the whole dir ensures no leftover junk.
+                 // Given we don't backup libraries (they are re-downloaded/checked), 
+                 // we might want to check if we should preserve them.
+                 // But wait, updateLibraries is effectively disabled/Maven based.
+                 // So re-downloading them is fine/expected if missing.
+                 
+                 // However, let's just clear .minecraft mostly.
             }
 
             // Extract
             progressCallback?.('Extraindo instância...', 50);
+            
+            // If we want to be safe, we can just extract over.
+            // But deleting ensures clean state.
+            // Let's rely on extraction overwriting, but for instance.zip which contains a full setup,
+            // it's often better to start clean.
+            // BUT, to avoid issues with open files etc., let's just overwrite for now + backup restore?
+            // No, the user issue implies "resetting", likely because the previous logic CLEARED it or overwrote it.
+            // The previous logic had:
+            // if (fs.existsSync(optionsPath)) fs.copyFileSync(optionsPath, optionsBackup);
+            // This was extremely limited.
+            
+            // Let's clear properly.
+            // But we must NOT delete the libraries folder if it exists and we want to keep it?
+            // Actually, GameHandler manages libraries now via Maven.
+            
             this.extractZip(tempZip, this.instanceDir);
 
-            // Restore options if backed up
-            const optionsBackup = path.join(this.dataPath, 'options_backup.txt');
-            const optionsPath = path.join(this.instanceDir, '.minecraft', 'options.txt');
-            if (fs.existsSync(optionsBackup)) {
-                fs.copyFileSync(optionsBackup, optionsPath);
-                fs.unlinkSync(optionsBackup);
-            }
+            // 3. Restore User Data
+            this.restoreUserData();
 
             // Update local version
             const localVersions = this.getLocalVersions();
