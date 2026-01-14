@@ -42,29 +42,37 @@ function createWindow(): void {
 
     mainWindow.setMenu(null); // Explicitly remove menu
 
-    // Open external links in the system's default browser, with fallback to internal window
+    // Open external links - use system browser on Windows/macOS, internal window on Linux
+    // (Linux has issues with xdg-open in sandboxed/containerized environments)
     ipcMain.handle('open-external', async (event, url) => {
         console.log('Opening external URL:', url);
-        const { shell } = await import('electron');
 
-        try {
-            await shell.openExternal(url);
-        } catch (err) {
-            console.warn('shell.openExternal failed, opening in internal window:', err);
-            // Fallback to internal window if xdg-open or similar is not available
+        const openInInternalWindow = () => {
+            const { nativeTheme } = require('electron');
+            nativeTheme.themeSource = 'dark';
+
             const win = new BrowserWindow({
                 width: 1024,
                 height: 800,
                 title: 'BlockyCRAFT',
                 autoHideMenuBar: true,
+                backgroundColor: '#1a1a1a',
                 webPreferences: {
                     nodeIntegration: false,
-                    contextIsolation: true,
-                    sandbox: true
+                    contextIsolation: true
                 }
             });
             win.setMenu(null);
-            await win.loadURL(url);
+            win.loadURL(url);
+        };
+
+        if (process.platform === 'linux') {
+            // Use internal window on Linux to avoid xdg-open issues
+            openInInternalWindow();
+        } else {
+            // Use system browser on Windows and macOS
+            const { shell } = await import('electron');
+            shell.openExternal(url);
         }
     });
 

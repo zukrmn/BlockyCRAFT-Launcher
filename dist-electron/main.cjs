@@ -3612,11 +3612,21 @@ var GameHandler = class {
           this.sendProgress(sender, `Baixando ${filename}`, Math.round(downloaded / total * 100));
         }
       }
-      fileStream.end();
+      await new Promise((resolve, reject) => {
+        fileStream.on("finish", resolve);
+        fileStream.on("error", reject);
+        fileStream.end();
+      });
       const stats = import_fs6.default.statSync(filePath);
       if (filename.endsWith(".jar") && stats.size < 100) {
         import_fs6.default.unlinkSync(filePath);
         throw new Error(`Downloaded file ${filename} is too small (${stats.size} bytes). Likely invalid.`);
+      }
+      if (filename.endsWith(".zip") && !validateZipFile(filePath)) {
+        const buffer = import_fs6.default.readFileSync(filePath);
+        const firstBytes = buffer.slice(0, 20).toString("hex");
+        import_fs6.default.unlinkSync(filePath);
+        throw new Error(`Downloaded file ${filename} is not a valid ZIP (first bytes: ${firstBytes}). Server may have returned an error page.`);
       }
       return filePath;
     } catch (e) {
@@ -3697,8 +3707,12 @@ var GameHandler = class {
           if (lib.downloads && lib.downloads.classifiers && lib.downloads.classifiers[nativesClassifier]) {
             const native = lib.downloads.classifiers[nativesClassifier];
             const tempNativePath = await this.downloadFile(native.url, import_path4.default.join(gameRoot, "temp_natives"), import_path4.default.basename(native.path), event.sender);
-            const zip = new import_adm_zip3.default(tempNativePath);
-            zip.extractAllTo(nativesDir, true);
+            if (validateZipFile(tempNativePath)) {
+              const zip = new import_adm_zip3.default(tempNativePath);
+              zip.extractAllTo(nativesDir, true);
+            } else {
+              console.warn(`[GameHandler] Skipping invalid native file: ${tempNativePath}`);
+            }
           }
         }
       }
@@ -4039,24 +4053,28 @@ function createWindow() {
   mainWindow.setMenu(null);
   import_electron5.ipcMain.handle("open-external", async (event, url) => {
     console.log("Opening external URL:", url);
-    const { shell } = await import("electron");
-    try {
-      await shell.openExternal(url);
-    } catch (err) {
-      console.warn("shell.openExternal failed, opening in internal window:", err);
+    const openInInternalWindow = () => {
+      const { nativeTheme } = require("electron");
+      nativeTheme.themeSource = "dark";
       const win = new import_electron5.BrowserWindow({
         width: 1024,
         height: 800,
         title: "BlockyCRAFT",
         autoHideMenuBar: true,
+        backgroundColor: "#1a1a1a",
         webPreferences: {
           nodeIntegration: false,
-          contextIsolation: true,
-          sandbox: true
+          contextIsolation: true
         }
       });
       win.setMenu(null);
-      await win.loadURL(url);
+      win.loadURL(url);
+    };
+    if (process.platform === "linux") {
+      openInInternalWindow();
+    } else {
+      const { shell } = await import("electron");
+      shell.openExternal(url);
     }
   });
   console.log("Window created, loading content...");
