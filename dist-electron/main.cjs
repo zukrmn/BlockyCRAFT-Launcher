@@ -3568,7 +3568,6 @@ var GameHandler = class {
     if (!import_fs6.default.existsSync(instanceZip)) {
       console.log("instance.zip not found. Attempting to download from VPS...");
       const vpsUrls = [
-        "https://marina.rodrigorocha.art.br/launcher-assets/instance.zip",
         "https://craft.blocky.com.br/launcher-assets/instance.zip"
       ];
       for (const vpsUrl of vpsUrls) {

@@ -163,7 +163,6 @@ export class GameHandler {
             // Note: Since this is called before typical progress events, we might want to just blocking download.
 
             const vpsUrls = [
-                'https://marina.rodrigorocha.art.br/launcher-assets/instance.zip',
                 'https://craft.blocky.com.br/launcher-assets/instance.zip'
             ];
 
