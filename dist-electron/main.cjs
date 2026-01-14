@@ -3720,39 +3720,6 @@ var GameHandler = class {
             }
           }
         }
-        const openalPath = import_path4.default.join(nativesDir, process.platform === "win32" ? "OpenAL64.dll" : "libopenal.so");
-        if (!import_fs6.default.existsSync(openalPath)) {
-          console.log("[GameHandler] OpenAL not found, downloading from Legacy Fabric...");
-          this.sendProgress(event.sender, "Baixando OpenAL...", 72);
-          let lwjglClassifier = "natives-linux";
-          if (process.platform === "win32") lwjglClassifier = "natives-windows";
-          else if (process.platform === "darwin") lwjglClassifier = "natives-osx";
-          const lwjglNativeUrl = `https://repo.legacyfabric.net/repository/legacyfabric/org/lwjgl/lwjgl/lwjgl-platform/2.9.4+legacyfabric.9/lwjgl-platform-2.9.4+legacyfabric.9-${lwjglClassifier}.jar`;
-          try {
-            const tempLwjglPath = await this.downloadFile(lwjglNativeUrl, import_path4.default.join(gameRoot, "temp_natives"), `lwjgl-platform-${lwjglClassifier}.jar`, event.sender);
-            if (validateZipFile(tempLwjglPath)) {
-              const zip = new import_adm_zip3.default(tempLwjglPath);
-              zip.extractAllTo(nativesDir, true);
-              console.log("[GameHandler] OpenAL natives extracted successfully");
-              if (process.platform === "win32") {
-                const openalRenames = [
-                  { from: "OpenAL-amd64.dll", to: "OpenAL64.dll" },
-                  { from: "OpenAL-i386.dll", to: "OpenAL32.dll" }
-                ];
-                for (const rename of openalRenames) {
-                  const srcPath = import_path4.default.join(nativesDir, rename.from);
-                  const destPath = import_path4.default.join(nativesDir, rename.to);
-                  if (import_fs6.default.existsSync(srcPath) && !import_fs6.default.existsSync(destPath)) {
-                    console.log(`[GameHandler] Renaming ${rename.from} -> ${rename.to}`);
-                    import_fs6.default.copyFileSync(srcPath, destPath);
-                  }
-                }
-              }
-            }
-          } catch (e) {
-            console.warn("[GameHandler] Failed to download OpenAL natives:", e);
-          }
-        }
       }
       let classpath = [mcJarPath];
       let mainClass = "net.minecraft.client.Minecraft";
