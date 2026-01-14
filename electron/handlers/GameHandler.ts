@@ -170,12 +170,20 @@ export class GameHandler {
             for (const vpsUrl of vpsUrls) {
                 try {
                     console.log(`Trying to download instance.zip from ${vpsUrl}...`);
-                    const response = await fetch(vpsUrl, { signal: AbortSignal.timeout(30000) });
+                    const response = await fetch(vpsUrl, { signal: AbortSignal.timeout(60000) }); // Increased timeout
                     if (response.ok) {
                         const arrayBuffer = await response.arrayBuffer();
-                        fs.writeFileSync(instanceZip, Buffer.from(arrayBuffer));
-                        console.log('instance.zip downloaded successfully from', vpsUrl);
-                        break; // Success, exit loop
+                        const buffer = Buffer.from(arrayBuffer);
+
+                        // Validate ZIP magic bytes (PK\x03\x04)
+                        if (buffer.length >= 4 && buffer[0] === 0x50 && buffer[1] === 0x4B) {
+                            fs.writeFileSync(instanceZip, buffer);
+                            console.log('instance.zip downloaded successfully from', vpsUrl);
+                            break; // Success, exit loop
+                        } else {
+                            console.warn(`Downloaded content from ${vpsUrl} is not a valid ZIP (got ${buffer.length} bytes, first bytes: ${buffer.slice(0, 20).toString('hex')})`);
+                            // Continue to next URL
+                        }
                     }
                 } catch (e) {
                     console.warn(`Failed to download instance.zip from ${vpsUrl}:`, e);
@@ -375,6 +383,47 @@ export class GameHandler {
                         } else {
                             console.warn(`[GameHandler] Skipping invalid native file: ${tempNativePath}`);
                         }
+                    }
+                }
+
+                // Ensure OpenAL is available (fallback for vanilla mode)
+                // The Mojang natives may not include OpenAL, so download from Legacy Fabric
+                const openalPath = path.join(nativesDir, process.platform === 'win32' ? 'OpenAL64.dll' : 'libopenal.so');
+                if (!fs.existsSync(openalPath)) {
+                    console.log('[GameHandler] OpenAL not found, downloading from Legacy Fabric...');
+                    this.sendProgress(event.sender, 'Baixando OpenAL...', 72);
+
+                    let lwjglClassifier = 'natives-linux';
+                    if (process.platform === 'win32') lwjglClassifier = 'natives-windows';
+                    else if (process.platform === 'darwin') lwjglClassifier = 'natives-osx';
+
+                    const lwjglNativeUrl = `https://repo.legacyfabric.net/repository/legacyfabric/org/lwjgl/lwjgl/lwjgl-platform/2.9.4+legacyfabric.9/lwjgl-platform-2.9.4+legacyfabric.9-${lwjglClassifier}.jar`;
+
+                    try {
+                        const tempLwjglPath = await this.downloadFile(lwjglNativeUrl, path.join(gameRoot, 'temp_natives'), `lwjgl-platform-${lwjglClassifier}.jar`, event.sender);
+                        if (validateZipFile(tempLwjglPath)) {
+                            const zip = new AdmZip(tempLwjglPath);
+                            zip.extractAllTo(nativesDir, true);
+                            console.log('[GameHandler] OpenAL natives extracted successfully');
+
+                            // Rename OpenAL DLLs for Windows
+                            if (process.platform === 'win32') {
+                                const openalRenames = [
+                                    { from: 'OpenAL-amd64.dll', to: 'OpenAL64.dll' },
+                                    { from: 'OpenAL-i386.dll', to: 'OpenAL32.dll' }
+                                ];
+                                for (const rename of openalRenames) {
+                                    const srcPath = path.join(nativesDir, rename.from);
+                                    const destPath = path.join(nativesDir, rename.to);
+                                    if (fs.existsSync(srcPath) && !fs.existsSync(destPath)) {
+                                        console.log(`[GameHandler] Renaming ${rename.from} -> ${rename.to}`);
+                                        fs.copyFileSync(srcPath, destPath);
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('[GameHandler] Failed to download OpenAL natives:', e);
                     }
                 }
             }
