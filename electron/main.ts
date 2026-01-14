@@ -42,24 +42,30 @@ function createWindow(): void {
 
     mainWindow.setMenu(null); // Explicitly remove menu
 
-    // Open external links in browser (Changed to internal window per user request)
+    // Open external links in the system's default browser, with fallback to internal window
     ipcMain.handle('open-external', async (event, url) => {
-        console.log('Opening external URL in new window:', url);
-        const win = new BrowserWindow({
-            width: 1024,
-            height: 800,
-            title: 'BlockyCRAFT External',
-            icon: path.join(__dirname, '../public/vite.svg'), // Best effort icon
-            autoHideMenuBar: true,
-            webPreferences: {
-                nodeIntegration: false,
-                contextIsolation: true,
-                sandbox: true // Important for security when loading external sites
-            }
-        });
+        console.log('Opening external URL:', url);
+        const { shell } = await import('electron');
 
-        win.setMenu(null);
-        await win.loadURL(url);
+        try {
+            await shell.openExternal(url);
+        } catch (err) {
+            console.warn('shell.openExternal failed, opening in internal window:', err);
+            // Fallback to internal window if xdg-open or similar is not available
+            const win = new BrowserWindow({
+                width: 1024,
+                height: 800,
+                title: 'BlockyCRAFT',
+                autoHideMenuBar: true,
+                webPreferences: {
+                    nodeIntegration: false,
+                    contextIsolation: true,
+                    sandbox: true
+                }
+            });
+            win.setMenu(null);
+            await win.loadURL(url);
+        }
     });
 
     console.log('Window created, loading content...');

@@ -4038,23 +4038,26 @@ function createWindow() {
   });
   mainWindow.setMenu(null);
   import_electron5.ipcMain.handle("open-external", async (event, url) => {
-    console.log("Opening external URL in new window:", url);
-    const win = new import_electron5.BrowserWindow({
-      width: 1024,
-      height: 800,
-      title: "BlockyCRAFT External",
-      icon: import_node_path.default.join(__dirname, "../public/vite.svg"),
-      // Best effort icon
-      autoHideMenuBar: true,
-      webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
-        sandbox: true
-        // Important for security when loading external sites
-      }
-    });
-    win.setMenu(null);
-    await win.loadURL(url);
+    console.log("Opening external URL:", url);
+    const { shell } = await import("electron");
+    try {
+      await shell.openExternal(url);
+    } catch (err) {
+      console.warn("shell.openExternal failed, opening in internal window:", err);
+      const win = new import_electron5.BrowserWindow({
+        width: 1024,
+        height: 800,
+        title: "BlockyCRAFT",
+        autoHideMenuBar: true,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+          sandbox: true
+        }
+      });
+      win.setMenu(null);
+      await win.loadURL(url);
+    }
   });
   console.log("Window created, loading content...");
   if (VITE_DEV_SERVER_URL) {
