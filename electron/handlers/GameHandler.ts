@@ -311,24 +311,6 @@ export class GameHandler {
         const nativesDir = path.join(binDir, 'natives');
         const librariesDir = path.join(gameRoot, 'libraries'); // Store libs outside .minecraft usually, or inside
 
-        // Fix OpenAL DLL naming for Windows (run on every launch)
-        // Legacy Fabric uses 'OpenAL-amd64.dll' but LWJGL 2.x expects 'OpenAL64.dll'
-        if (process.platform === 'win32' && fs.existsSync(nativesDir)) {
-            const openalRenames = [
-                { from: 'OpenAL-amd64.dll', to: 'OpenAL64.dll' },
-                { from: 'OpenAL-i386.dll', to: 'OpenAL32.dll' },
-                { from: 'OpenAL-aarch64.dll', to: 'OpenAL64.dll' }
-            ];
-            for (const rename of openalRenames) {
-                const srcPath = path.join(nativesDir, rename.from);
-                const destPath = path.join(nativesDir, rename.to);
-                if (fs.existsSync(srcPath) && !fs.existsSync(destPath)) {
-                    console.log(`[GameHandler] Fixing OpenAL: ${rename.from} -> ${rename.to}`);
-                    fs.copyFileSync(srcPath, destPath);
-                }
-            }
-        }
-
         try {
             // 2a. Download Vanilla Assets (Required for both)
             if (!options.username) throw new Error('Username required');
@@ -406,21 +388,6 @@ export class GameHandler {
                             zip.extractAllTo(nativesDir, true);
                             console.log('[GameHandler] OpenAL natives extracted successfully');
 
-                            // Rename OpenAL DLLs for Windows
-                            if (process.platform === 'win32') {
-                                const openalRenames = [
-                                    { from: 'OpenAL-amd64.dll', to: 'OpenAL64.dll' },
-                                    { from: 'OpenAL-i386.dll', to: 'OpenAL32.dll' }
-                                ];
-                                for (const rename of openalRenames) {
-                                    const srcPath = path.join(nativesDir, rename.from);
-                                    const destPath = path.join(nativesDir, rename.to);
-                                    if (fs.existsSync(srcPath) && !fs.existsSync(destPath)) {
-                                        console.log(`[GameHandler] Renaming ${rename.from} -> ${rename.to}`);
-                                        fs.copyFileSync(srcPath, destPath);
-                                    }
-                                }
-                            }
                         }
                     } catch (e) {
                         console.warn('[GameHandler] Failed to download OpenAL natives:', e);
@@ -561,23 +528,6 @@ export class GameHandler {
                             await safeExtractZipWithRetry(tempPath, nativesDir);
                         }
 
-                        // Fix OpenAL DLL naming for Windows
-                        // Legacy Fabric uses 'OpenAL-amd64.dll' but LWJGL 2.x expects 'OpenAL64.dll'
-                        if (process.platform === 'win32') {
-                            const openalRenames = [
-                                { from: 'OpenAL-amd64.dll', to: 'OpenAL64.dll' },
-                                { from: 'OpenAL-i386.dll', to: 'OpenAL32.dll' },
-                                { from: 'OpenAL-aarch64.dll', to: 'OpenAL64.dll' }
-                            ];
-                            for (const rename of openalRenames) {
-                                const srcPath = path.join(nativesDir, rename.from);
-                                const destPath = path.join(nativesDir, rename.to);
-                                if (fs.existsSync(srcPath) && !fs.existsSync(destPath)) {
-                                    console.log(`[GameHandler] Renaming ${rename.from} -> ${rename.to}`);
-                                    fs.copyFileSync(srcPath, destPath);
-                                }
-                            }
-                        }
 
                         // Download Fabric Loader (0.16.7)
                         const loaderUrl = 'https://maven.fabricmc.net/net/fabricmc/fabric-loader/0.16.7/fabric-loader-0.16.7.jar';
