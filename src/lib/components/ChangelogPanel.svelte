@@ -1,29 +1,39 @@
 <script lang="ts">
   import { i18n } from "../stores/i18n.svelte";
   import { marked } from "marked";
+  import { ElectronService } from "../electron";
 
   let changelogContent = $state("");
   let isLoading = $state(false);
 
-  const updateUrls: Record<string, string> = {
+  const updateUrls = {
       pt: "https://craft.blocky.com.br/launcher-assets/pt-updates.md",
       en: "https://craft.blocky.com.br/launcher-assets/en-updates.md",
       es: "https://craft.blocky.com.br/launcher-assets/es-updates.md"
   };
 
   async function fetchUpdates(langCode: string) {
+      if (!langCode) {
+          console.warn("[ChangelogPanel] No language code provided");
+          return;
+      }
+
       // Extract base language (pt-BR -> pt)
       const baseLang = langCode.split('-')[0].toLowerCase();
-      // Fallback to PT if unknown key, as requested by user logic implies these 3 exist
-      const url = updateUrls[baseLang] || updateUrls['pt']; 
+      // Fallback to PT if unknown key
+      const url = (updateUrls as any)[baseLang] || updateUrls['pt']; 
+      
+      const fullUrl = url + '?t=' + Date.now();
 
       isLoading = true;
       try {
-          const res = await fetch(url + '?t=' + Date.now()); // Add timestamp to bust cache
-          if (!res.ok) throw new Error("Failed to fetch");
-          const text = await res.text();
-          // marked.parse can be async
-          changelogContent = await marked.parse(text);
+          const res = await ElectronService.fetchUrl(fullUrl);
+          
+          if (!res.success || !res.data) {
+              throw new Error(res.error || "Fetch failed");
+          }
+          
+          changelogContent = await marked.parse(res.data);
       } catch (e) {
           console.error("Failed to fetch changelog:", e);
           changelogContent = `<p style="color: #ef4444;">Failed to load updates. Please check your internet connection.</p>`;
@@ -34,7 +44,7 @@
 
   // Reactive fetching
   $effect(() => {
-     fetchUpdates(i18n.language);
+     fetchUpdates(i18n.lang);
   });
 </script>
 

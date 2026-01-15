@@ -59,6 +59,23 @@ function createWindow(): void {
         }
     });
 
+    // Proxy fetch requests to bypass CORS
+    ipcMain.handle('fetch-url', async (event, url) => {
+        Logger.info('Main', `Proxying fetch request to: ${url}`);
+        const { net } = await import('electron');
+        try {
+            const response = await net.fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status} ${response.statusText}`);
+            }
+            const text = await response.text();
+            return { success: true, data: text };
+        } catch (e: any) {
+            Logger.error('Main', `Fetch failed for ${url}: ${e.message}`);
+            return { success: false, error: e.message };
+        }
+    });
+
     console.log('Window created, loading content...');
 
     if (VITE_DEV_SERVER_URL) {

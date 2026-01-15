@@ -1,5 +1,6 @@
 <script lang="ts">
   import { i18n } from "../stores/i18n.svelte";
+  import { ElectronService } from "../electron";
 
   let donators = $state<{ name: string }[]>([]);
   let isLoading = $state(true);
@@ -8,10 +9,12 @@
 
   async function fetchDonators() {
     try {
-        const res = await fetch(DONATORS_URL + '?t=' + Date.now());
-        if (!res.ok) throw new Error("Failed to fetch donators");
+        const fullUrl = DONATORS_URL + '?t=' + Date.now();
+        const res = await ElectronService.fetchUrl(fullUrl);
         
-        const data = await res.json();
+        if (!res.success || !res.data) throw new Error(res.error || "Fetch failed");
+        
+        const data = JSON.parse(res.data);
         
         if (Array.isArray(data)) {
             donators = data.map((item: any) => {
