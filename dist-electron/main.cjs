@@ -3116,7 +3116,6 @@ var import_fs4 = __toESM(require("fs"), 1);
 var import_fs5 = require("fs");
 var import_adm_zip2 = __toESM(require_adm_zip(), 1);
 var VERSION_JSON_URLS = [
-  "https://marina.rodrigorocha.art.br/launcher-assets/version.json",
   "https://craft.blocky.com.br/launcher-assets/version.json"
 ];
 var UpdateManager = class {
@@ -3914,6 +3913,32 @@ var GameHandler = class {
                 }
               } catch (e) {
                 console.warn("[GameHandler] Failed to process macOS natives:", e);
+              }
+            }
+            if (process.platform === "win32") {
+              try {
+                const files = import_fs6.default.readdirSync(nativesDir);
+                const renameMap = {
+                  "OpenAL-amd64.dll": "OpenAL64.dll",
+                  "OpenAL-i386.dll": "OpenAL32.dll",
+                  "OpenAL-aarch64.dll": "OpenAL64.dll"
+                  // ARM64 Windows uses 64-bit naming
+                };
+                for (const [oldName, newName] of Object.entries(renameMap)) {
+                  if (files.includes(oldName)) {
+                    const oldPath = import_path4.default.join(nativesDir, oldName);
+                    const newPath = import_path4.default.join(nativesDir, newName);
+                    console.log(`[GameHandler] Renaming ${oldName} to ${newName} for LWJGL 2.x compatibility`);
+                    try {
+                      if (import_fs6.default.existsSync(newPath)) import_fs6.default.unlinkSync(newPath);
+                      import_fs6.default.copyFileSync(oldPath, newPath);
+                    } catch (renameErr) {
+                      console.warn(`[GameHandler] Failed to rename ${oldName}:`, renameErr);
+                    }
+                  }
+                }
+              } catch (e) {
+                console.warn("[GameHandler] Failed to process Windows OpenAL natives:", e);
               }
             }
             try {
