@@ -4,10 +4,6 @@
   // Mock data for now
   let donators = [
     { name: "LimaooDoomer", uuid: "ec01c71e-3f62-421f-8255-0814467332d7" },
-    { name: "Katiau", uuid: "uuid-katiau" },
-    { name: "Henriquezando", uuid: "uuid-henriquezando" },
-    { name: "Alberto", uuid: "uuid-alberto" },
-    { name: "Epstein", uuid: "uuid-epstein" },
   ];
 </script>
 
