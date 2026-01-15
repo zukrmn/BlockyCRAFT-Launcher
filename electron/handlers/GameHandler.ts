@@ -558,70 +558,65 @@ export class GameHandler {
                             }
                         }
 
-                        // FIX: Windows OpenAL - Use OpenAL Soft from LWJGL 3 for better compatibility
-                        // LWJGL 2.9.4 bundled OpenAL DLLs are often faulty on modern Windows
-                        // Solution: Download OpenAL Soft from LWJGL 3 natives which is more compatible
+                        // FIX: Windows OpenAL - Use OpenAL from Minecraft's official LWJGL 2.9.4-nightly
+                        // The LWJGL 2.9.4+legacyfabric bundled OpenAL DLLs (OpenAL-amd64.dll) may be incompatible
+                        // Solution: Download OpenAL64.dll/OpenAL32.dll from Minecraft's official LWJGL 2.9.4 natives
                         if (process.platform === 'win32') {
                             try {
                                 const openal64Path = path.join(nativesDir, 'OpenAL64.dll');
                                 const openal32Path = path.join(nativesDir, 'OpenAL32.dll');
 
-                                // Check if we need to download better OpenAL
-                                // We'll always replace to ensure compatibility
-                                console.log('[GameHandler] Downloading OpenAL Soft from LWJGL 3 for better Windows compatibility...');
-                                this.sendProgress(event.sender, 'Baixando OpenAL Soft...', 79);
+                                // Check if we already have the correct OpenAL files
+                                // The legacyfabric ones are named OpenAL-amd64.dll which may not work
+                                console.log('[GameHandler] Downloading compatible OpenAL from Minecraft LWJGL 2.9.4...');
+                                this.sendProgress(event.sender, 'Baixando OpenAL compatível...', 79);
 
-                                // LWJGL 3 OpenAL natives URLs (OpenAL Soft - much more compatible)
-                                const lwjgl3OpenALUrl = 'https://repo1.maven.org/maven2/org/lwjgl/lwjgl-openal/3.3.3/lwjgl-openal-3.3.3-natives-windows.jar';
+                                // Minecraft's official LWJGL 2.9.4-nightly natives (confirmed working with LWJGL 2)
+                                const mcLwjgl2Url = 'https://libraries.minecraft.net/org/lwjgl/lwjgl/lwjgl-platform/2.9.4-nightly-20150209/lwjgl-platform-2.9.4-nightly-20150209-natives-windows.jar';
 
                                 try {
-                                    const tempOpenALPath = path.join(gameRoot, 'temp_natives', 'lwjgl3-openal-natives.jar');
+                                    const tempOpenALPath = path.join(gameRoot, 'temp_natives', 'mc-lwjgl2-natives.jar');
 
-                                    // Download LWJGL 3 OpenAL natives
-                                    const response = await fetch(lwjgl3OpenALUrl, { signal: AbortSignal.timeout(30000) });
+                                    // Download Minecraft's LWJGL 2 natives
+                                    const response = await fetch(mcLwjgl2Url, { signal: AbortSignal.timeout(30000) });
                                     if (response.ok) {
                                         const arrayBuffer = await response.arrayBuffer();
                                         const buffer = Buffer.from(arrayBuffer);
 
-                                        // Validate and save
+                                        // Validate ZIP
                                         if (buffer.length >= 4 && buffer[0] === 0x50 && buffer[1] === 0x4B) {
                                             fs.mkdirSync(path.dirname(tempOpenALPath), { recursive: true });
                                             fs.writeFileSync(tempOpenALPath, buffer);
 
-                                            // Extract OpenAL DLL from LWJGL 3 natives
+                                            // Extract OpenAL DLLs
                                             const zip = new AdmZip(tempOpenALPath);
                                             const entries = zip.getEntries();
 
                                             for (const entry of entries) {
-                                                // LWJGL 3 has OpenAL.dll at windows/x64/org/lwjgl/openal/OpenAL.dll
-                                                if (entry.entryName.toLowerCase().endsWith('openal.dll') && !entry.isDirectory) {
-                                                    console.log(`[GameHandler] Found OpenAL DLL in LWJGL 3: ${entry.entryName}`);
-                                                    const dllContent = entry.getData();
-
-                                                    // Write as OpenAL64.dll (for 64-bit)
-                                                    fs.writeFileSync(openal64Path, dllContent);
-                                                    console.log('[GameHandler] Installed OpenAL Soft as OpenAL64.dll');
-
-                                                    // Also write as OpenAL32.dll for compatibility
-                                                    fs.writeFileSync(openal32Path, dllContent);
-                                                    console.log('[GameHandler] Installed OpenAL Soft as OpenAL32.dll');
-
-                                                    // Also write as OpenAL.dll for system fallback
-                                                    fs.writeFileSync(path.join(nativesDir, 'OpenAL.dll'), dllContent);
-
-                                                    break;
+                                                if (entry.entryName === 'OpenAL64.dll' && !entry.isDirectory) {
+                                                    fs.writeFileSync(openal64Path, entry.getData());
+                                                    console.log('[GameHandler] Installed OpenAL64.dll from Minecraft LWJGL 2.9.4');
+                                                }
+                                                if (entry.entryName === 'OpenAL32.dll' && !entry.isDirectory) {
+                                                    fs.writeFileSync(openal32Path, entry.getData());
+                                                    console.log('[GameHandler] Installed OpenAL32.dll from Minecraft LWJGL 2.9.4');
                                                 }
                                             }
+
+                                            // Also copy as OpenAL.dll for generic fallback
+                                            if (fs.existsSync(openal64Path)) {
+                                                fs.copyFileSync(openal64Path, path.join(nativesDir, 'OpenAL.dll'));
+                                            }
                                         } else {
-                                            console.warn('[GameHandler] Downloaded OpenAL natives is not a valid ZIP');
+                                            console.warn('[GameHandler] Downloaded natives is not a valid ZIP');
                                         }
                                     } else {
-                                        console.warn('[GameHandler] Failed to download LWJGL 3 OpenAL:', response.statusText);
+                                        console.warn('[GameHandler] Failed to download MC LWJGL 2 natives:', response.statusText);
                                     }
                                 } catch (downloadErr) {
-                                    console.warn('[GameHandler] Failed to download OpenAL Soft:', downloadErr);
+                                    console.warn('[GameHandler] Failed to download Minecraft OpenAL:', downloadErr);
 
-                                // Fallback: Just rename existing files
+                                    // Fallback: Just rename existing files
                                     const files = fs.readdirSync(nativesDir);
                                     const renameMap: { [key: string]: string } = {
                                         'OpenAL-amd64.dll': 'OpenAL64.dll',

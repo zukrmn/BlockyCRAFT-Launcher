@@ -3919,12 +3919,12 @@ var GameHandler = class {
               try {
                 const openal64Path = import_path4.default.join(nativesDir, "OpenAL64.dll");
                 const openal32Path = import_path4.default.join(nativesDir, "OpenAL32.dll");
-                console.log("[GameHandler] Downloading OpenAL Soft from LWJGL 3 for better Windows compatibility...");
-                this.sendProgress(event.sender, "Baixando OpenAL Soft...", 79);
-                const lwjgl3OpenALUrl = "https://repo1.maven.org/maven2/org/lwjgl/lwjgl-openal/3.3.3/lwjgl-openal-3.3.3-natives-windows.jar";
+                console.log("[GameHandler] Downloading compatible OpenAL from Minecraft LWJGL 2.9.4...");
+                this.sendProgress(event.sender, "Baixando OpenAL compat\xEDvel...", 79);
+                const mcLwjgl2Url = "https://libraries.minecraft.net/org/lwjgl/lwjgl/lwjgl-platform/2.9.4-nightly-20150209/lwjgl-platform-2.9.4-nightly-20150209-natives-windows.jar";
                 try {
-                  const tempOpenALPath = import_path4.default.join(gameRoot, "temp_natives", "lwjgl3-openal-natives.jar");
-                  const response = await fetch(lwjgl3OpenALUrl, { signal: AbortSignal.timeout(3e4) });
+                  const tempOpenALPath = import_path4.default.join(gameRoot, "temp_natives", "mc-lwjgl2-natives.jar");
+                  const response = await fetch(mcLwjgl2Url, { signal: AbortSignal.timeout(3e4) });
                   if (response.ok) {
                     const arrayBuffer = await response.arrayBuffer();
                     const buffer = Buffer.from(arrayBuffer);
@@ -3934,25 +3934,26 @@ var GameHandler = class {
                       const zip = new import_adm_zip3.default(tempOpenALPath);
                       const entries = zip.getEntries();
                       for (const entry of entries) {
-                        if (entry.entryName.toLowerCase().endsWith("openal.dll") && !entry.isDirectory) {
-                          console.log(`[GameHandler] Found OpenAL DLL in LWJGL 3: ${entry.entryName}`);
-                          const dllContent = entry.getData();
-                          import_fs6.default.writeFileSync(openal64Path, dllContent);
-                          console.log("[GameHandler] Installed OpenAL Soft as OpenAL64.dll");
-                          import_fs6.default.writeFileSync(openal32Path, dllContent);
-                          console.log("[GameHandler] Installed OpenAL Soft as OpenAL32.dll");
-                          import_fs6.default.writeFileSync(import_path4.default.join(nativesDir, "OpenAL.dll"), dllContent);
-                          break;
+                        if (entry.entryName === "OpenAL64.dll" && !entry.isDirectory) {
+                          import_fs6.default.writeFileSync(openal64Path, entry.getData());
+                          console.log("[GameHandler] Installed OpenAL64.dll from Minecraft LWJGL 2.9.4");
+                        }
+                        if (entry.entryName === "OpenAL32.dll" && !entry.isDirectory) {
+                          import_fs6.default.writeFileSync(openal32Path, entry.getData());
+                          console.log("[GameHandler] Installed OpenAL32.dll from Minecraft LWJGL 2.9.4");
                         }
                       }
+                      if (import_fs6.default.existsSync(openal64Path)) {
+                        import_fs6.default.copyFileSync(openal64Path, import_path4.default.join(nativesDir, "OpenAL.dll"));
+                      }
                     } else {
-                      console.warn("[GameHandler] Downloaded OpenAL natives is not a valid ZIP");
+                      console.warn("[GameHandler] Downloaded natives is not a valid ZIP");
                     }
                   } else {
-                    console.warn("[GameHandler] Failed to download LWJGL 3 OpenAL:", response.statusText);
+                    console.warn("[GameHandler] Failed to download MC LWJGL 2 natives:", response.statusText);
                   }
                 } catch (downloadErr) {
-                  console.warn("[GameHandler] Failed to download OpenAL Soft:", downloadErr);
+                  console.warn("[GameHandler] Failed to download Minecraft OpenAL:", downloadErr);
                   const files = import_fs6.default.readdirSync(nativesDir);
                   const renameMap = {
                     "OpenAL-amd64.dll": "OpenAL64.dll",
