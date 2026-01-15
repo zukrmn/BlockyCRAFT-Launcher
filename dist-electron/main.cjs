@@ -3917,23 +3917,54 @@ var GameHandler = class {
             }
             if (process.platform === "win32") {
               try {
-                const files = import_fs6.default.readdirSync(nativesDir);
-                const renameMap = {
-                  "OpenAL-amd64.dll": "OpenAL64.dll",
-                  "OpenAL-i386.dll": "OpenAL32.dll",
-                  "OpenAL-aarch64.dll": "OpenAL64.dll"
-                  // ARM64 Windows uses 64-bit naming
-                };
-                for (const [oldName, newName] of Object.entries(renameMap)) {
-                  if (files.includes(oldName)) {
-                    const oldPath = import_path4.default.join(nativesDir, oldName);
-                    const newPath = import_path4.default.join(nativesDir, newName);
-                    console.log(`[GameHandler] Renaming ${oldName} to ${newName} for LWJGL 2.x compatibility`);
-                    try {
+                const openal64Path = import_path4.default.join(nativesDir, "OpenAL64.dll");
+                const openal32Path = import_path4.default.join(nativesDir, "OpenAL32.dll");
+                console.log("[GameHandler] Downloading OpenAL Soft from LWJGL 3 for better Windows compatibility...");
+                this.sendProgress(event.sender, "Baixando OpenAL Soft...", 79);
+                const lwjgl3OpenALUrl = "https://repo1.maven.org/maven2/org/lwjgl/lwjgl-openal/3.3.3/lwjgl-openal-3.3.3-natives-windows.jar";
+                try {
+                  const tempOpenALPath = import_path4.default.join(gameRoot, "temp_natives", "lwjgl3-openal-natives.jar");
+                  const response = await fetch(lwjgl3OpenALUrl, { signal: AbortSignal.timeout(3e4) });
+                  if (response.ok) {
+                    const arrayBuffer = await response.arrayBuffer();
+                    const buffer = Buffer.from(arrayBuffer);
+                    if (buffer.length >= 4 && buffer[0] === 80 && buffer[1] === 75) {
+                      import_fs6.default.mkdirSync(import_path4.default.dirname(tempOpenALPath), { recursive: true });
+                      import_fs6.default.writeFileSync(tempOpenALPath, buffer);
+                      const zip = new import_adm_zip3.default(tempOpenALPath);
+                      const entries = zip.getEntries();
+                      for (const entry of entries) {
+                        if (entry.entryName.endsWith("openal.dll") && !entry.isDirectory) {
+                          const dllContent = entry.getData();
+                          import_fs6.default.writeFileSync(openal64Path, dllContent);
+                          console.log("[GameHandler] Installed OpenAL Soft as OpenAL64.dll");
+                          import_fs6.default.writeFileSync(openal32Path, dllContent);
+                          console.log("[GameHandler] Installed OpenAL Soft as OpenAL32.dll");
+                          import_fs6.default.writeFileSync(import_path4.default.join(nativesDir, "OpenAL.dll"), dllContent);
+                          break;
+                        }
+                      }
+                    } else {
+                      console.warn("[GameHandler] Downloaded OpenAL natives is not a valid ZIP");
+                    }
+                  } else {
+                    console.warn("[GameHandler] Failed to download LWJGL 3 OpenAL:", response.statusText);
+                  }
+                } catch (downloadErr) {
+                  console.warn("[GameHandler] Failed to download OpenAL Soft:", downloadErr);
+                  const files = import_fs6.default.readdirSync(nativesDir);
+                  const renameMap = {
+                    "OpenAL-amd64.dll": "OpenAL64.dll",
+                    "OpenAL-i386.dll": "OpenAL32.dll",
+                    "OpenAL-aarch64.dll": "OpenAL64.dll"
+                  };
+                  for (const [oldName, newName] of Object.entries(renameMap)) {
+                    if (files.includes(oldName)) {
+                      const oldPath = import_path4.default.join(nativesDir, oldName);
+                      const newPath = import_path4.default.join(nativesDir, newName);
                       if (import_fs6.default.existsSync(newPath)) import_fs6.default.unlinkSync(newPath);
                       import_fs6.default.copyFileSync(oldPath, newPath);
-                    } catch (renameErr) {
-                      console.warn(`[GameHandler] Failed to rename ${oldName}:`, renameErr);
+                      console.log(`[GameHandler] Fallback: Copied ${oldName} to ${newName}`);
                     }
                   }
                 }
