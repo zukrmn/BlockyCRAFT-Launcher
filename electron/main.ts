@@ -7,11 +7,15 @@ app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
 
 import { Logger } from './handlers/Logger.js';
 import { GameHandler } from './handlers/GameHandler.js';
+import { ModHandler } from './handlers/ModHandler.js';
 
 // Initialize logger as early as possible (after imports)
 // Note: Full init happens in app.whenReady() when userData is available
 const gameHandler = new GameHandler();
 gameHandler.init();
+
+const modHandler = new ModHandler();
+modHandler.init();
 
 console.log('=== BlockyCRAFT Launcher Starting ===');
 

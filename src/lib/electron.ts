@@ -95,5 +95,15 @@ export const ElectronService = {
         if (electron) {
             electron.receive('game-connected', callback);
         }
+    },
+
+    async getMods(): Promise<Array<{ fileName: string; name: string; description: string; version: string; enabled: boolean; }>> {
+        if (!electron) return [];
+        return electron.invoke('get-mods', null) as Promise<any[]>;
+    },
+
+    async toggleMod(fileName: string, enable: boolean): Promise<{ success: boolean; error?: string }> {
+        if (!electron) return { success: false, error: 'Electron not available' };
+        return electron.invoke('toggle-mod', { fileName, enable }) as Promise<{ success: boolean; error?: string }>;
     }
 };
