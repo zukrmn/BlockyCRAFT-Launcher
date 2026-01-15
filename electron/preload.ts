@@ -22,7 +22,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Invoke methods (request-response pattern)
   invoke: async (channel: string, data: unknown): Promise<unknown> => {
-    const validChannels = ['get-minecraft-path', 'get-java-version', 'launch-game', 'check-custom-instance', 'check-update-status', 'perform-update', 'open-external', 'kill-game', 'get-mods', 'toggle-mod'];
+    const validChannels = ['get-minecraft-path', 'get-java-version', 'launch-game', 'check-custom-instance', 'check-update-status', 'perform-update', 'open-external', 'kill-game', 'get-mods', 'toggle-mod', 'fetch-url'];
     if (validChannels.includes(channel)) {
       return ipcRenderer.invoke(channel, data);
     }

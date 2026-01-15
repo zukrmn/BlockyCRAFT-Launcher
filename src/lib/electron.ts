@@ -105,5 +105,10 @@ export const ElectronService = {
     async toggleMod(fileName: string, enable: boolean): Promise<{ success: boolean; error?: string }> {
         if (!electron) return { success: false, error: 'Electron not available' };
         return electron.invoke('toggle-mod', { fileName, enable }) as Promise<{ success: boolean; error?: string }>;
+    },
+
+    async fetchUrl(url: string): Promise<{ success: boolean; data?: string; error?: string }> {
+        if (!electron) return { success: false, error: 'Electron not available' };
+        return electron.invoke('fetch-url', url) as Promise<{ success: boolean; data?: string; error?: string }>;
     }
 };
