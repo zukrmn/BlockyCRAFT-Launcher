@@ -4007,13 +4007,16 @@ var GameHandler = class {
       launchArgs.push("--port", "25565");
       console.log("Spawning java:", this.javaPath);
       console.log("Args:", launchArgs);
-      const gameEnv = {
-        ...process.env,
-        // Increase OpenAL buffer size to prevent timing warnings
-        ALSOFT_CONF: "period_size=2048",
-        // Prefer PulseAudio/PipeWire backend
-        ALSOFT_DRIVERS: "pulse,alsa,oss"
-      };
+      const gameEnv = { ...process.env };
+      if (process.platform === "linux") {
+        gameEnv.ALSOFT_CONF = "period_size=2048";
+        gameEnv.ALSOFT_DRIVERS = "pulse,alsa,oss";
+      }
+      if (process.platform === "win32") {
+        const pathKey = Object.keys(gameEnv).find((k) => k.toLowerCase() === "path") || "Path";
+        gameEnv[pathKey] = nativesDir + import_path4.default.delimiter + (gameEnv[pathKey] || "");
+        console.log("[GameHandler] Updated PATH with natives:", nativesDir);
+      }
       this.gameProcess = (0, import_child_process2.spawn)(this.javaPath, launchArgs, {
         cwd: dotMinecraft,
         env: gameEnv
