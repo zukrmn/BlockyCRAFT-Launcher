@@ -558,6 +558,39 @@ export class GameHandler {
                             }
                         }
 
+                        // FIX: Windows OpenAL DLL renaming for LWJGL 2.x compatibility
+                        // LWJGL 2.x looks for OpenAL64.dll/OpenAL32.dll but Legacy Fabric extracts
+                        // OpenAL-amd64.dll/OpenAL-i386.dll/OpenAL-aarch64.dll
+                        if (process.platform === 'win32') {
+                            try {
+                                const files = fs.readdirSync(nativesDir);
+                                const renameMap: { [key: string]: string } = {
+                                    'OpenAL-amd64.dll': 'OpenAL64.dll',
+                                    'OpenAL-i386.dll': 'OpenAL32.dll',
+                                    'OpenAL-aarch64.dll': 'OpenAL64.dll' // ARM64 Windows uses 64-bit naming
+                                };
+
+                                for (const [oldName, newName] of Object.entries(renameMap)) {
+                                    if (files.includes(oldName)) {
+                                        const oldPath = path.join(nativesDir, oldName);
+                                        const newPath = path.join(nativesDir, newName);
+
+                                        console.log(`[GameHandler] Renaming ${oldName} to ${newName} for LWJGL 2.x compatibility`);
+                                        try {
+                                            // Remove existing file if it exists
+                                            if (fs.existsSync(newPath)) fs.unlinkSync(newPath);
+                                            // Copy instead of rename to keep original as backup
+                                            fs.copyFileSync(oldPath, newPath);
+                                        } catch (renameErr) {
+                                            console.warn(`[GameHandler] Failed to rename ${oldName}:`, renameErr);
+                                        }
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn('[GameHandler] Failed to process Windows OpenAL natives:', e);
+                            }
+                        }
+
                         // Log the contents of natives folder for debugging
                         try {
                             const nativesContents = fs.readdirSync(nativesDir);
