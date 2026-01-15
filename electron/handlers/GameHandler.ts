@@ -716,14 +716,26 @@ export class GameHandler {
             console.log('Spawning java:', this.javaPath);
             console.log('Args:', launchArgs);
 
-            // Configure OpenAL Soft for better Linux audio compatibility
-            const gameEnv = {
-                ...process.env,
+            // Prepare environment variables
+            const gameEnv = { ...process.env };
+
+            // Configure OpenAL Soft for Linux ONLY
+            // Setting this on Windows breaks OpenAL if openal-soft tries to load linux backends
+            if (process.platform === 'linux') {
                 // Increase OpenAL buffer size to prevent timing warnings
-                ALSOFT_CONF: 'period_size=2048',
+                gameEnv.ALSOFT_CONF = 'period_size=2048';
                 // Prefer PulseAudio/PipeWire backend
-                ALSOFT_DRIVERS: 'pulse,alsa,oss',
-            };
+                gameEnv.ALSOFT_DRIVERS = 'pulse,alsa,oss';
+            }
+
+            // On Windows, add natives to PATH to help LWJGL find the DLLs
+            if (process.platform === 'win32') {
+                // Find existing Path key (case-insensitive)
+                const pathKey = Object.keys(gameEnv).find(k => k.toLowerCase() === 'path') || 'Path';
+                // Append nativesDir to PATH
+                gameEnv[pathKey] = nativesDir + path.delimiter + (gameEnv[pathKey] || '');
+                console.log('[GameHandler] Updated PATH with natives:', nativesDir);
+            }
 
             this.gameProcess = spawn(this.javaPath, launchArgs, {
                 cwd: dotMinecraft,
