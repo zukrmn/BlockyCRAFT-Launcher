@@ -558,31 +558,83 @@ export class GameHandler {
                             }
                         }
 
-                        // FIX: Windows OpenAL DLL renaming for LWJGL 2.x compatibility
-                        // LWJGL 2.x looks for OpenAL64.dll/OpenAL32.dll but Legacy Fabric extracts
-                        // OpenAL-amd64.dll/OpenAL-i386.dll/OpenAL-aarch64.dll
+                        // FIX: Windows OpenAL - Use OpenAL Soft from LWJGL 3 for better compatibility
+                        // LWJGL 2.9.4 bundled OpenAL DLLs are often faulty on modern Windows
+                        // Solution: Download OpenAL Soft from LWJGL 3 natives which is more compatible
                         if (process.platform === 'win32') {
                             try {
-                                const files = fs.readdirSync(nativesDir);
-                                const renameMap: { [key: string]: string } = {
-                                    'OpenAL-amd64.dll': 'OpenAL64.dll',
-                                    'OpenAL-i386.dll': 'OpenAL32.dll',
-                                    'OpenAL-aarch64.dll': 'OpenAL64.dll' // ARM64 Windows uses 64-bit naming
-                                };
+                                const openal64Path = path.join(nativesDir, 'OpenAL64.dll');
+                                const openal32Path = path.join(nativesDir, 'OpenAL32.dll');
 
-                                for (const [oldName, newName] of Object.entries(renameMap)) {
-                                    if (files.includes(oldName)) {
-                                        const oldPath = path.join(nativesDir, oldName);
-                                        const newPath = path.join(nativesDir, newName);
+                                // Check if we need to download better OpenAL
+                                // We'll always replace to ensure compatibility
+                                console.log('[GameHandler] Downloading OpenAL Soft from LWJGL 3 for better Windows compatibility...');
+                                this.sendProgress(event.sender, 'Baixando OpenAL Soft...', 79);
 
-                                        console.log(`[GameHandler] Renaming ${oldName} to ${newName} for LWJGL 2.x compatibility`);
-                                        try {
-                                            // Remove existing file if it exists
+                                // LWJGL 3 OpenAL natives URLs (OpenAL Soft - much more compatible)
+                                const lwjgl3OpenALUrl = 'https://repo1.maven.org/maven2/org/lwjgl/lwjgl-openal/3.3.3/lwjgl-openal-3.3.3-natives-windows.jar';
+
+                                try {
+                                    const tempOpenALPath = path.join(gameRoot, 'temp_natives', 'lwjgl3-openal-natives.jar');
+
+                                    // Download LWJGL 3 OpenAL natives
+                                    const response = await fetch(lwjgl3OpenALUrl, { signal: AbortSignal.timeout(30000) });
+                                    if (response.ok) {
+                                        const arrayBuffer = await response.arrayBuffer();
+                                        const buffer = Buffer.from(arrayBuffer);
+
+                                        // Validate and save
+                                        if (buffer.length >= 4 && buffer[0] === 0x50 && buffer[1] === 0x4B) {
+                                            fs.mkdirSync(path.dirname(tempOpenALPath), { recursive: true });
+                                            fs.writeFileSync(tempOpenALPath, buffer);
+
+                                            // Extract OpenAL DLL from LWJGL 3 natives
+                                            const zip = new AdmZip(tempOpenALPath);
+                                            const entries = zip.getEntries();
+
+                                            for (const entry of entries) {
+                                                // LWJGL 3 has openal.dll inside the jar
+                                                if (entry.entryName.endsWith('openal.dll') && !entry.isDirectory) {
+                                                    const dllContent = entry.getData();
+
+                                                    // Write as OpenAL64.dll (for 64-bit)
+                                                    fs.writeFileSync(openal64Path, dllContent);
+                                                    console.log('[GameHandler] Installed OpenAL Soft as OpenAL64.dll');
+
+                                                    // Also write as OpenAL32.dll for compatibility
+                                                    fs.writeFileSync(openal32Path, dllContent);
+                                                    console.log('[GameHandler] Installed OpenAL Soft as OpenAL32.dll');
+
+                                                    // Also write as OpenAL.dll for system fallback
+                                                    fs.writeFileSync(path.join(nativesDir, 'OpenAL.dll'), dllContent);
+
+                                                    break;
+                                                }
+                                            }
+                                        } else {
+                                            console.warn('[GameHandler] Downloaded OpenAL natives is not a valid ZIP');
+                                        }
+                                    } else {
+                                        console.warn('[GameHandler] Failed to download LWJGL 3 OpenAL:', response.statusText);
+                                    }
+                                } catch (downloadErr) {
+                                    console.warn('[GameHandler] Failed to download OpenAL Soft:', downloadErr);
+
+                                // Fallback: Just rename existing files
+                                    const files = fs.readdirSync(nativesDir);
+                                    const renameMap: { [key: string]: string } = {
+                                        'OpenAL-amd64.dll': 'OpenAL64.dll',
+                                        'OpenAL-i386.dll': 'OpenAL32.dll',
+                                        'OpenAL-aarch64.dll': 'OpenAL64.dll'
+                                    };
+
+                                    for (const [oldName, newName] of Object.entries(renameMap)) {
+                                        if (files.includes(oldName)) {
+                                            const oldPath = path.join(nativesDir, oldName);
+                                            const newPath = path.join(nativesDir, newName);
                                             if (fs.existsSync(newPath)) fs.unlinkSync(newPath);
-                                            // Copy instead of rename to keep original as backup
                                             fs.copyFileSync(oldPath, newPath);
-                                        } catch (renameErr) {
-                                            console.warn(`[GameHandler] Failed to rename ${oldName}:`, renameErr);
+                                            console.log(`[GameHandler] Fallback: Copied ${oldName} to ${newName}`);
                                         }
                                     }
                                 }
