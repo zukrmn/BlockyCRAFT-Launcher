@@ -1,29 +1,56 @@
 <script lang="ts">
   import { i18n } from "../stores/i18n.svelte";
 
-  // Mock data for now
-  let donators = [
-    { name: "LimaooDoomer", uuid: "ec01c71e-3f62-421f-8255-0814467332d7" },
-    { name: "Katiau", uuid: "uuid-katiau" },
-    { name: "Henriquezando", uuid: "uuid-henriquezando" },
-    { name: "Alberto", uuid: "uuid-alberto" },
-    { name: "Epstein", uuid: "uuid-epstein" },
-  ];
+  let donators = $state<{ name: string }[]>([]);
+  let isLoading = $state(true);
+
+  const DONATORS_URL = "https://craft.blocky.com.br/launcher-assets/donators.json";
+
+  async function fetchDonators() {
+    try {
+        const res = await fetch(DONATORS_URL + '?t=' + Date.now());
+        if (!res.ok) throw new Error("Failed to fetch donators");
+        
+        const data = await res.json();
+        
+        if (Array.isArray(data)) {
+            donators = data.map((item: any) => {
+                // Support ["Name"] or [{ username: "Name" }] or [{ name: "Name" }]
+                const name = typeof item === 'string' ? item : (item.username || item.name);
+                return { name };
+            }).filter(d => d.name); // Filter empty
+        }
+    } catch (e) {
+        console.error("Failed to load donators:", e);
+        // Fallback or empty state
+        donators = [];
+    } finally {
+        isLoading = false;
+    }
+  }
+
+  $effect(() => {
+    fetchDonators();
+  });
 </script>
 
 <div class="donators-panel">
   <h3>{i18n.t("ui.donators")}</h3>
   <div class="grid">
-    {#each donators as donor}
-      <div class="donor-item" title={donor.name}>
-        <img 
-          src="https://minotar.net/avatar/{donor.name}/64" 
-          alt={donor.name}
-          loading="lazy"
-        />
-        <span class="donor-name">{donor.name}</span>
-      </div>
-    {/each}
+    {#if isLoading}
+        <div class="loading">Loading...</div>
+    {:else}
+        {#each donators as donor}
+        <div class="donor-item" title={donor.name}>
+            <img 
+            src="https://minotar.net/avatar/{donor.name}/64" 
+            alt={donor.name}
+            loading="lazy"
+            />
+            <span class="donor-name">{donor.name}</span>
+        </div>
+        {/each}
+    {/if}
   </div>
 </div>
 

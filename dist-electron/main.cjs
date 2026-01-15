@@ -2681,7 +2681,7 @@ var require_adm_zip = __commonJS({
 });
 
 // electron/main.ts
-var import_electron6 = require("electron");
+var import_electron7 = require("electron");
 var import_node_path = __toESM(require("node:path"), 1);
 
 // electron/handlers/Logger.ts
@@ -4269,20 +4269,90 @@ var ModHandler = class {
   }
 };
 
+// electron/handlers/NewsHandler.ts
+var import_electron6 = require("electron");
+var NewsHandler = class _NewsHandler {
+  // Default URL - User should replace this with their actual hosted JSON
+  static NEWS_URL = "https://raw.githubusercontent.com/zukrmn/BlockyCRAFT-Launcher/main/news.json";
+  cache = [];
+  lastFetch = 0;
+  CACHE_TTL = 30 * 60 * 1e3;
+  // 30 minutes
+  constructor() {
+  }
+  init() {
+    import_electron6.ipcMain.handle("get-news", async () => {
+      return this.getNews();
+    });
+  }
+  async getNews() {
+    const now = Date.now();
+    if (this.cache.length > 0 && now - this.lastFetch < this.CACHE_TTL) {
+      Logger.info("NewsHandler", "Returning cached news");
+      return this.cache;
+    }
+    Logger.info("NewsHandler", `Fetching news from ${_NewsHandler.NEWS_URL}...`);
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1e4);
+      const response = await fetch(_NewsHandler.NEWS_URL, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      const data = await response.json();
+      if (!Array.isArray(data)) {
+        throw new Error("Invalid news format: Expected array");
+      }
+      this.cache = data;
+      this.lastFetch = now;
+      Logger.info("NewsHandler", `Successfully fetched ${this.cache.length} news items`);
+      return this.cache;
+    } catch (e) {
+      Logger.error("NewsHandler", `Failed to fetch news: ${e.message}`);
+      if (this.cache.length > 0) {
+        Logger.warn("NewsHandler", "Returning expired cache due to fetch error");
+        return this.cache;
+      }
+      return this.getFallbackNews();
+    }
+  }
+  getFallbackNews() {
+    return [
+      {
+        id: "fallback-1",
+        date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+        title: {
+          "en": "Welcome to BlockyCRAFT",
+          "pt": "Bem-vindo ao BlockyCRAFT",
+          "es": "Bienvenido a BlockyCRAFT"
+        },
+        content: {
+          "en": "<p>Unable to load latest news. Please check your internet connection.</p>",
+          "pt": "<p>N\xE3o foi poss\xEDvel carregar as not\xEDcias. Verifique sua conex\xE3o com a internet.</p>",
+          "es": "<p>No se pudieron cargar las noticias. Verifique su conexi\xF3n a Internet.</p>"
+        }
+      }
+    ];
+  }
+};
+
 // electron/main.ts
-import_electron6.app.commandLine.appendSwitch("no-sandbox");
-import_electron6.app.commandLine.appendSwitch("ozone-platform-hint", "auto");
+import_electron7.app.commandLine.appendSwitch("no-sandbox");
+import_electron7.app.commandLine.appendSwitch("ozone-platform-hint", "auto");
 var gameHandler = new GameHandler();
 gameHandler.init();
 var modHandler = new ModHandler();
 modHandler.init();
+var newsHandler = new NewsHandler();
+newsHandler.init();
 console.log("=== BlockyCRAFT Launcher Starting ===");
 console.log("Electron version:", process.versions.electron);
 var mainWindow = null;
 var VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 function createWindow() {
   console.log("Creating main window...");
-  mainWindow = new import_electron6.BrowserWindow({
+  mainWindow = new import_electron7.BrowserWindow({
     width: 900,
     height: 600,
     minWidth: 800,
@@ -4301,7 +4371,7 @@ function createWindow() {
     // Hide menu bar
   });
   mainWindow.setMenu(null);
-  import_electron6.ipcMain.handle("open-external", async (event, url) => {
+  import_electron7.ipcMain.handle("open-external", async (event, url) => {
     console.log("Opening external URL:", url);
     try {
       const { shell } = await import("electron");
@@ -4333,20 +4403,20 @@ function createWindow() {
     mainWindow = null;
   });
 }
-import_electron6.app.whenReady().then(() => {
+import_electron7.app.whenReady().then(() => {
   Logger.init();
   Logger.info("Main", `Electron version: ${process.versions.electron}`);
   Logger.info("Main", `Node version: ${process.versions.node}`);
   Logger.info("Main", `Platform: ${process.platform} ${process.arch}`);
   createWindow();
 });
-import_electron6.app.on("window-all-closed", () => {
+import_electron7.app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
-    import_electron6.app.quit();
+    import_electron7.app.quit();
   }
 });
-import_electron6.app.on("activate", () => {
-  if (import_electron6.BrowserWindow.getAllWindows().length === 0) {
+import_electron7.app.on("activate", () => {
+  if (import_electron7.BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
 });
