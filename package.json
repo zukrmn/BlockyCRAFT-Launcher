@@ -59,6 +59,7 @@
     "electron": "^33.4.11",
     "electron-builder": "^26.4.0",
     "esbuild": "^0.25.6",
+    "png2icons": "^2.0.1",
     "svelte": "^5.43.8",
     "svelte-check": "^4.3.4",
     "typescript": "~5.9.3",
