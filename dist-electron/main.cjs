@@ -4018,8 +4018,6 @@ var GameHandler = class {
         "-Djava.library.path=" + nativesDir,
         "-Dorg.lwjgl.librarypath=" + nativesDir,
         // Fix for some lwjgl versions
-        // Enable LWJGL debug logging to see library loading attempts
-        "-Dorg.lwjgl.util.Debug=true",
         "-Dfabric.gameJarPath=" + mcJarPath,
         "-Dfabric.gameVersion=b1.7.3",
         "-Dfabric.envType=client",
