@@ -3934,7 +3934,8 @@ var GameHandler = class {
                       const zip = new import_adm_zip3.default(tempOpenALPath);
                       const entries = zip.getEntries();
                       for (const entry of entries) {
-                        if (entry.entryName.endsWith("openal.dll") && !entry.isDirectory) {
+                        if (entry.entryName.toLowerCase().endsWith("openal.dll") && !entry.isDirectory) {
+                          console.log(`[GameHandler] Found OpenAL DLL in LWJGL 3: ${entry.entryName}`);
                           const dllContent = entry.getData();
                           import_fs6.default.writeFileSync(openal64Path, dllContent);
                           console.log("[GameHandler] Installed OpenAL Soft as OpenAL64.dll");

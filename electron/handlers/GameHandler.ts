@@ -593,8 +593,9 @@ export class GameHandler {
                                             const entries = zip.getEntries();
 
                                             for (const entry of entries) {
-                                                // LWJGL 3 has openal.dll inside the jar
-                                                if (entry.entryName.endsWith('openal.dll') && !entry.isDirectory) {
+                                                // LWJGL 3 has OpenAL.dll at windows/x64/org/lwjgl/openal/OpenAL.dll
+                                                if (entry.entryName.toLowerCase().endsWith('openal.dll') && !entry.isDirectory) {
+                                                    console.log(`[GameHandler] Found OpenAL DLL in LWJGL 3: ${entry.entryName}`);
                                                     const dllContent = entry.getData();
 
                                                     // Write as OpenAL64.dll (for 64-bit)
