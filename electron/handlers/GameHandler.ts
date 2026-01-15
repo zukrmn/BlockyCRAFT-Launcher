@@ -307,7 +307,9 @@ export class GameHandler {
         }
 
         const binDir = path.join(dotMinecraft, 'bin');
-        const nativesDir = path.join(binDir, 'natives');
+        // IMPORTANT: Match PrismLauncher - natives at instance root, NOT inside .minecraft/bin/
+        // The .minecraft path with dot may cause issues with LWJGL native loading on Windows
+        const nativesDir = path.join(gameRoot, 'natives');
         const librariesDir = path.join(gameRoot, 'libraries'); // Store libs outside .minecraft usually, or inside
 
         try {
