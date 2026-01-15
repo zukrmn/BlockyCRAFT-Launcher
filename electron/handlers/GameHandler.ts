@@ -639,7 +639,7 @@ export class GameHandler {
 
                     for (const p of priorities) {
                         if (nativesFiles.includes(p)) {
-                            openalLibPath = path.join(nativesDir, p);
+                            openalLibPath = path.join(nativesDir, p).replace(/\\/g, '/');
                             console.log(`[GameHandler] Found OpenAL library: ${openalLibPath}`);
                             break;
                         }
@@ -649,7 +649,7 @@ export class GameHandler {
                     if (!openalLibPath) {
                         const found = nativesFiles.find(f => f.toLowerCase().includes('openal') && (f.endsWith('.dll') || f.endsWith('.so') || f.endsWith('.dylib')));
                         if (found) {
-                            openalLibPath = path.join(nativesDir, found);
+                            openalLibPath = path.join(nativesDir, found).replace(/\\/g, '/');
                             console.log(`[GameHandler] Found OpenAL library (fallback): ${openalLibPath}`);
                         }
                     }
