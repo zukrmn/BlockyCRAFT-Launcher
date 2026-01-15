@@ -3724,7 +3724,7 @@ var GameHandler = class {
       import_fs6.default.rmSync(sensitiveCache, { recursive: true, force: true });
     }
     const binDir = import_path4.default.join(dotMinecraft, "bin");
-    const nativesDir = import_path4.default.join(binDir, "natives");
+    const nativesDir = import_path4.default.join(gameRoot, "natives");
     const librariesDir = import_path4.default.join(gameRoot, "libraries");
     try {
       if (!options.username) throw new Error("Username required");
