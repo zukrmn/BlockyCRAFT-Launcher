@@ -558,86 +558,9 @@ export class GameHandler {
                             }
                         }
 
-                        // FIX: Windows OpenAL - Use OpenAL from Minecraft's official LWJGL 2.9.4-nightly
-                        // The LWJGL 2.9.4+legacyfabric bundled OpenAL DLLs (OpenAL-amd64.dll) may be incompatible
-                        // Solution: Download OpenAL64.dll/OpenAL32.dll from Minecraft's official LWJGL 2.9.4 natives
-                        if (process.platform === 'win32') {
-                            try {
-                                const openal64Path = path.join(nativesDir, 'OpenAL64.dll');
-                                const openal32Path = path.join(nativesDir, 'OpenAL32.dll');
-
-                                // Check if we already have the correct OpenAL files
-                                // The legacyfabric ones are named OpenAL-amd64.dll which may not work
-                                console.log('[GameHandler] Downloading compatible OpenAL from Minecraft LWJGL 2.9.4...');
-                                this.sendProgress(event.sender, 'Baixando OpenAL compatível...', 79);
-
-                                // Minecraft's official LWJGL 2.9.4-nightly natives (confirmed working with LWJGL 2)
-                                const mcLwjgl2Url = 'https://libraries.minecraft.net/org/lwjgl/lwjgl/lwjgl-platform/2.9.4-nightly-20150209/lwjgl-platform-2.9.4-nightly-20150209-natives-windows.jar';
-
-                                try {
-                                    const tempOpenALPath = path.join(gameRoot, 'temp_natives', 'mc-lwjgl2-natives.jar');
-
-                                    // Download Minecraft's LWJGL 2 natives
-                                    const response = await fetch(mcLwjgl2Url, { signal: AbortSignal.timeout(30000) });
-                                    if (response.ok) {
-                                        const arrayBuffer = await response.arrayBuffer();
-                                        const buffer = Buffer.from(arrayBuffer);
-
-                                        // Validate ZIP
-                                        if (buffer.length >= 4 && buffer[0] === 0x50 && buffer[1] === 0x4B) {
-                                            fs.mkdirSync(path.dirname(tempOpenALPath), { recursive: true });
-                                            fs.writeFileSync(tempOpenALPath, buffer);
-
-                                            // Extract OpenAL DLLs
-                                            const zip = new AdmZip(tempOpenALPath);
-                                            const entries = zip.getEntries();
-
-                                            for (const entry of entries) {
-                                                if (entry.entryName === 'OpenAL64.dll' && !entry.isDirectory) {
-                                                    fs.writeFileSync(openal64Path, entry.getData());
-                                                    console.log('[GameHandler] Installed OpenAL64.dll from Minecraft LWJGL 2.9.4');
-                                                }
-                                                if (entry.entryName === 'OpenAL32.dll' && !entry.isDirectory) {
-                                                    fs.writeFileSync(openal32Path, entry.getData());
-                                                    console.log('[GameHandler] Installed OpenAL32.dll from Minecraft LWJGL 2.9.4');
-                                                }
-                                            }
-
-                                            // Also copy as OpenAL.dll for generic fallback
-                                            if (fs.existsSync(openal64Path)) {
-                                                fs.copyFileSync(openal64Path, path.join(nativesDir, 'OpenAL.dll'));
-                                            }
-                                        } else {
-                                            console.warn('[GameHandler] Downloaded natives is not a valid ZIP');
-                                        }
-                                    } else {
-                                        console.warn('[GameHandler] Failed to download MC LWJGL 2 natives:', response.statusText);
-                                    }
-                                } catch (downloadErr) {
-                                    console.warn('[GameHandler] Failed to download Minecraft OpenAL:', downloadErr);
-
-                                    // Fallback: Just rename existing files
-                                    const files = fs.readdirSync(nativesDir);
-                                    const renameMap: { [key: string]: string } = {
-                                        'OpenAL-amd64.dll': 'OpenAL64.dll',
-                                        'OpenAL-i386.dll': 'OpenAL32.dll',
-                                        'OpenAL-aarch64.dll': 'OpenAL64.dll'
-                                    };
-
-                                    for (const [oldName, newName] of Object.entries(renameMap)) {
-                                        if (files.includes(oldName)) {
-                                            const oldPath = path.join(nativesDir, oldName);
-                                            const newPath = path.join(nativesDir, newName);
-                                            if (fs.existsSync(newPath)) fs.unlinkSync(newPath);
-                                            fs.copyFileSync(oldPath, newPath);
-                                            console.log(`[GameHandler] Fallback: Copied ${oldName} to ${newName}`);
-                                        }
-                                    }
-                                }
-                            } catch (e) {
-                                console.warn('[GameHandler] Failed to process Windows OpenAL natives:', e);
-                            }
-                        }
+                        // NOTE: PrismLauncher works with the original OpenAL-amd64.dll files
+                        // No need to download or rename. The fix is in using forward slashes
+                        // in java.library.path and NOT using -Dorg.lwjgl.librarypath/openal.libname
 
                         // Log the contents of natives folder for debugging
                         try {
@@ -711,16 +634,17 @@ export class GameHandler {
             try {
                 if (fs.existsSync(nativesDir)) {
                     const nativesFiles = fs.readdirSync(nativesDir);
-                    // Prioritize specific names
-                    const priorities = [
-                        'OpenAL64.dll', 'OpenAL32.dll', 'OpenAL-amd64.dll', 'OpenAL-i386.dll', // Windows
-                        'libopenal.so', // Linux
-                        'libopenal.dylib', 'openal.dylib' // macOS
-                    ];
+                    // Prioritize specific names based on platform
+                    const priorities = process.platform === 'win32'
+                        ? ['OpenAL64.dll', 'OpenAL32.dll', 'OpenAL-amd64.dll', 'OpenAL-i386.dll', 'OpenAL.dll']
+                        : process.platform === 'darwin'
+                            ? ['libopenal.dylib', 'openal.dylib']
+                            : ['libopenal.so', 'libopenal-amd64.so', 'libopenal-i386.so'];
 
                     for (const p of priorities) {
                         if (nativesFiles.includes(p)) {
-                            openalLibPath = path.join(nativesDir, p).replace(/\\/g, '/');
+                            // Use native path separators - don't convert to forward slashes on Windows
+                            openalLibPath = path.join(nativesDir, p);
                             console.log(`[GameHandler] Found OpenAL library: ${openalLibPath}`);
                             break;
                         }
@@ -730,7 +654,7 @@ export class GameHandler {
                     if (!openalLibPath) {
                         const found = nativesFiles.find(f => f.toLowerCase().includes('openal') && (f.endsWith('.dll') || f.endsWith('.so') || f.endsWith('.dylib')));
                         if (found) {
-                            openalLibPath = path.join(nativesDir, found).replace(/\\/g, '/');
+                            openalLibPath = path.join(nativesDir, found);
                             console.log(`[GameHandler] Found OpenAL library (fallback): ${openalLibPath}`);
                         }
                     }
@@ -739,20 +663,26 @@ export class GameHandler {
                 console.warn('[GameHandler] Failed to scan for OpenAL lib:', e);
             }
 
-            // Base launch args
+            // Base launch args - Matching PrismLauncher configuration
+            // IMPORTANT: Use forward slashes for paths (like PrismLauncher does)
+            // and only use -Djava.library.path (NOT -Dorg.lwjgl.librarypath or openal.libname)
+            const nativesDirForward = nativesDir.replace(/\\/g, '/');
+            const dotMinecraftForward = dotMinecraft.replace(/\\/g, '/');
+            const resourcesPath = path.join(dotMinecraft, 'resources').replace(/\\/g, '/');
+
             const launchArgs: string[] = [
                 `-Xms${minMem}M`,
                 `-Xmx${maxMem}M`,
-                '-Djava.library.path=' + nativesDir,
-                '-Dorg.lwjgl.librarypath=' + nativesDir, // Fix for some lwjgl versions
-                '-Dfabric.gameJarPath=' + mcJarPath,
+                // Match PrismLauncher: only java.library.path with forward slashes
+                '-Djava.library.path=' + nativesDirForward,
+                '-Dfabric.gameJarPath=' + mcJarPath.replace(/\\/g, '/'),
                 '-Dfabric.gameVersion=b1.7.3',
                 '-Dfabric.envType=client',
                 // Suppress SLF4J "no providers" warning
                 '-Dslf4j.internal.verbosity=ERROR',
                 // Disable legacy resource downloads from defunct S3 bucket
-                '-Dminecraft.resources.index=' + path.join(dotMinecraft, 'resources'),
-                '-Dminecraft.applet.TargetDirectory=' + dotMinecraft,
+                '-Dminecraft.resources.index=' + resourcesPath,
+                '-Dminecraft.applet.TargetDirectory=' + dotMinecraftForward,
                 '-Dminecraft.applet.BaseURL=file:///',
             ];
 
