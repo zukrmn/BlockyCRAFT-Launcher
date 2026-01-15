@@ -14,7 +14,10 @@ export const translations: Record<string, Record<string, string>> = {
         "settings.javaArgs": "Java Arguments",
         "settings.javaArgsHint": "Advanced: Custom JVM arguments (e.g. -Dorg.lwjgl.opengl.Display.allowSoftwareOpenGL=true for VMs)",
         "status.launching": "Launching...",
-        "status.error": "Error launching: "
+        "status.error": "Error launching: ",
+        "settings.tab.general": "General",
+        "settings.tab.mods": "Mods",
+        "settings.mods.empty": "No mods found."
     },
     "pt-BR": {
         "ui.donate": "Doar",
@@ -31,7 +34,10 @@ export const translations: Record<string, Record<string, string>> = {
         "settings.javaArgs": "Argumentos Java",
         "settings.javaArgsHint": "Avançado: Argumentos JVM personalizados (ex: -Dorg.lwjgl.opengl.Display.allowSoftwareOpenGL=true para VMs)",
         "status.launching": "Iniciando...",
-        "status.error": "Erro ao iniciar: "
+        "status.error": "Erro ao iniciar: ",
+        "settings.tab.general": "Geral",
+        "settings.tab.mods": "Mods",
+        "settings.mods.empty": "Nenhum mod encontrado."
     },
     "es-ES": {
         "ui.donate": "Donar",
@@ -48,7 +54,10 @@ export const translations: Record<string, Record<string, string>> = {
         "settings.javaArgs": "Argumentos Java",
         "settings.javaArgsHint": "Avanzado: Argumentos JVM personalizados (ej: -Dorg.lwjgl.opengl.Display.allowSoftwareOpenGL=true para VMs)",
         "status.launching": "Iniciando...",
-        "status.error": "Error al iniciar: "
+        "status.error": "Error al iniciar: ",
+        "settings.tab.general": "General",
+        "settings.tab.mods": "Mods",
+        "settings.mods.empty": "Ningún mod encontrado."
     }
 };
 

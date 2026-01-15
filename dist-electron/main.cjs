@@ -350,25 +350,25 @@ var require_utils = __commonJS({
       }
       mkdirSync(folder);
     };
-    Utils.prototype.writeFileTo = function(path6, content, overwrite, attr) {
+    Utils.prototype.writeFileTo = function(path7, content, overwrite, attr) {
       const self = this;
-      if (self.fs.existsSync(path6)) {
+      if (self.fs.existsSync(path7)) {
         if (!overwrite) return false;
-        var stat = self.fs.statSync(path6);
+        var stat = self.fs.statSync(path7);
         if (stat.isDirectory()) {
           return false;
         }
       }
-      var folder = pth.dirname(path6);
+      var folder = pth.dirname(path7);
       if (!self.fs.existsSync(folder)) {
         self.makeDir(folder);
       }
       var fd;
       try {
-        fd = self.fs.openSync(path6, "w", 438);
+        fd = self.fs.openSync(path7, "w", 438);
       } catch (e) {
-        self.fs.chmodSync(path6, 438);
-        fd = self.fs.openSync(path6, "w", 438);
+        self.fs.chmodSync(path7, 438);
+        fd = self.fs.openSync(path7, "w", 438);
       }
       if (fd) {
         try {
@@ -377,31 +377,31 @@ var require_utils = __commonJS({
           self.fs.closeSync(fd);
         }
       }
-      self.fs.chmodSync(path6, attr || 438);
+      self.fs.chmodSync(path7, attr || 438);
       return true;
     };
-    Utils.prototype.writeFileToAsync = function(path6, content, overwrite, attr, callback) {
+    Utils.prototype.writeFileToAsync = function(path7, content, overwrite, attr, callback) {
       if (typeof attr === "function") {
         callback = attr;
         attr = void 0;
       }
       const self = this;
-      self.fs.exists(path6, function(exist) {
+      self.fs.exists(path7, function(exist) {
         if (exist && !overwrite) return callback(false);
-        self.fs.stat(path6, function(err, stat) {
+        self.fs.stat(path7, function(err, stat) {
           if (exist && stat.isDirectory()) {
             return callback(false);
           }
-          var folder = pth.dirname(path6);
+          var folder = pth.dirname(path7);
           self.fs.exists(folder, function(exists) {
             if (!exists) self.makeDir(folder);
-            self.fs.open(path6, "w", 438, function(err2, fd) {
+            self.fs.open(path7, "w", 438, function(err2, fd) {
               if (err2) {
-                self.fs.chmod(path6, 438, function() {
-                  self.fs.open(path6, "w", 438, function(err3, fd2) {
+                self.fs.chmod(path7, 438, function() {
+                  self.fs.open(path7, "w", 438, function(err3, fd2) {
                     self.fs.write(fd2, content, 0, content.length, 0, function() {
                       self.fs.close(fd2, function() {
-                        self.fs.chmod(path6, attr || 438, function() {
+                        self.fs.chmod(path7, attr || 438, function() {
                           callback(true);
                         });
                       });
@@ -411,13 +411,13 @@ var require_utils = __commonJS({
               } else if (fd) {
                 self.fs.write(fd, content, 0, content.length, 0, function() {
                   self.fs.close(fd, function() {
-                    self.fs.chmod(path6, attr || 438, function() {
+                    self.fs.chmod(path7, attr || 438, function() {
                       callback(true);
                     });
                   });
                 });
               } else {
-                self.fs.chmod(path6, attr || 438, function() {
+                self.fs.chmod(path7, attr || 438, function() {
                   callback(true);
                 });
               }
@@ -426,7 +426,7 @@ var require_utils = __commonJS({
         });
       });
     };
-    Utils.prototype.findFiles = function(path6) {
+    Utils.prototype.findFiles = function(path7) {
       const self = this;
       function findSync(dir, pattern, recursive) {
         if (typeof pattern === "boolean") {
@@ -435,16 +435,16 @@ var require_utils = __commonJS({
         }
         let files = [];
         self.fs.readdirSync(dir).forEach(function(file) {
-          const path7 = pth.join(dir, file);
-          const stat = self.fs.statSync(path7);
-          if (!pattern || pattern.test(path7)) {
-            files.push(pth.normalize(path7) + (stat.isDirectory() ? self.sep : ""));
+          const path8 = pth.join(dir, file);
+          const stat = self.fs.statSync(path8);
+          if (!pattern || pattern.test(path8)) {
+            files.push(pth.normalize(path8) + (stat.isDirectory() ? self.sep : ""));
           }
-          if (stat.isDirectory() && recursive) files = files.concat(findSync(path7, pattern, recursive));
+          if (stat.isDirectory() && recursive) files = files.concat(findSync(path8, pattern, recursive));
         });
         return files;
       }
-      return findSync(path6, void 0, true);
+      return findSync(path7, void 0, true);
     };
     Utils.prototype.findFilesAsync = function(dir, cb) {
       const self = this;
@@ -499,14 +499,14 @@ var require_utils = __commonJS({
           return "UNSUPPORTED (" + method + ")";
       }
     };
-    Utils.canonical = function(path6) {
-      if (!path6) return "";
-      const safeSuffix = pth.posix.normalize("/" + path6.split("\\").join("/"));
+    Utils.canonical = function(path7) {
+      if (!path7) return "";
+      const safeSuffix = pth.posix.normalize("/" + path7.split("\\").join("/"));
       return pth.join(".", safeSuffix);
     };
-    Utils.zipnamefix = function(path6) {
-      if (!path6) return "";
-      const safeSuffix = pth.posix.normalize("/" + path6.split("\\").join("/"));
+    Utils.zipnamefix = function(path7) {
+      if (!path7) return "";
+      const safeSuffix = pth.posix.normalize("/" + path7.split("\\").join("/"));
       return pth.posix.join(".", safeSuffix);
     };
     Utils.findLast = function(arr, callback) {
@@ -523,9 +523,9 @@ var require_utils = __commonJS({
       prefix = pth.resolve(pth.normalize(prefix));
       var parts = name.split("/");
       for (var i = 0, l = parts.length; i < l; i++) {
-        var path6 = pth.normalize(pth.join(prefix, parts.slice(i, l).join(pth.sep)));
-        if (path6.indexOf(prefix) === 0) {
-          return path6;
+        var path7 = pth.normalize(pth.join(prefix, parts.slice(i, l).join(pth.sep)));
+        if (path7.indexOf(prefix) === 0) {
+          return path7;
         }
       }
       return pth.normalize(pth.join(prefix, pth.basename(name)));
@@ -565,8 +565,8 @@ var require_utils = __commonJS({
 var require_fattr = __commonJS({
   "node_modules/adm-zip/util/fattr.js"(exports2, module2) {
     var pth = require("path");
-    module2.exports = function(path6, { fs: fs5 }) {
-      var _path = path6 || "", _obj = newAttr(), _stat = null;
+    module2.exports = function(path7, { fs: fs6 }) {
+      var _path = path7 || "", _obj = newAttr(), _stat = null;
       function newAttr() {
         return {
           directory: false,
@@ -577,8 +577,8 @@ var require_fattr = __commonJS({
           atime: 0
         };
       }
-      if (_path && fs5.existsSync(_path)) {
-        _stat = fs5.statSync(_path);
+      if (_path && fs6.existsSync(_path)) {
+        _stat = fs6.statSync(_path);
         _obj.directory = _stat.isDirectory();
         _obj.mtime = _stat.mtime;
         _obj.atime = _stat.atime;
@@ -2681,7 +2681,7 @@ var require_adm_zip = __commonJS({
 });
 
 // electron/main.ts
-var import_electron5 = require("electron");
+var import_electron6 = require("electron");
 var import_node_path = __toESM(require("node:path"), 1);
 
 // electron/handlers/Logger.ts
@@ -3600,9 +3600,9 @@ var GameHandler = class {
   sendProgress(sender, status, progress) {
     sender.send("launch-progress", { status, progress });
   }
-  async checkJava(path6) {
+  async checkJava(path7) {
     try {
-      await execAsync2(`"${path6}" -version`);
+      await execAsync2(`"${path7}" -version`);
       return true;
     } catch (e) {
       return false;
@@ -4098,18 +4098,191 @@ var GameHandler = class {
   }
 };
 
+// electron/handlers/ModHandler.ts
+var import_electron5 = require("electron");
+var import_fs8 = __toESM(require("fs"), 1);
+var import_path5 = __toESM(require("path"), 1);
+var import_adm_zip4 = __toESM(require_adm_zip(), 1);
+var ModHandler = class {
+  userDataPath;
+  activeModsDir = "";
+  constructor() {
+    this.userDataPath = import_electron5.app.getPath("userData");
+  }
+  init() {
+    import_electron5.ipcMain.handle("get-mods", async () => {
+      Logger.info("ModHandler", "Fetching mods list...");
+      return this.getMods();
+    });
+    import_electron5.ipcMain.handle("toggle-mod", async (event, { fileName, enable }) => {
+      Logger.info("ModHandler", `Toggling mod ${fileName} to ${enable}`);
+      return this.toggleMod(fileName, enable);
+    });
+  }
+  async toggleMod(fileName, enable) {
+    if (!this.activeModsDir) {
+      const msg = "Cannot toggle mod: No active mods directory found.";
+      Logger.error("ModHandler", msg);
+      return { success: false, error: msg };
+    }
+    const disabledDir = import_path5.default.join(this.activeModsDir, "disabled");
+    if (!import_fs8.default.existsSync(disabledDir)) {
+      try {
+        await import_fs8.default.promises.mkdir(disabledDir, { recursive: true });
+      } catch (e) {
+        const msg = `Failed to create disabled directory: ${e.message}`;
+        Logger.error("ModHandler", msg);
+        return { success: false, error: msg };
+      }
+    }
+    try {
+      if (enable) {
+        const sourcePath = import_path5.default.join(disabledDir, fileName);
+        const destPath = import_path5.default.join(this.activeModsDir, fileName);
+        if (import_fs8.default.existsSync(sourcePath)) {
+          if (import_fs8.default.existsSync(destPath)) {
+            const msg = `Destination file already exists: ${destPath}`;
+            Logger.warn("ModHandler", msg);
+            return { success: false, error: msg };
+          }
+          const success = await this.moveFile(sourcePath, destPath);
+          if (success) {
+            Logger.info("ModHandler", `Enabled mod: Moved ${fileName} to active folder`);
+            return { success: true };
+          } else {
+            return { success: false, error: "Move operation failed (check logs)" };
+          }
+        } else {
+          const msg = `Cannot enable: File not found in disabled folder: ${sourcePath}`;
+          Logger.warn("ModHandler", msg);
+          return { success: false, error: msg };
+        }
+      } else {
+        const sourcePath = import_path5.default.join(this.activeModsDir, fileName);
+        const destPath = import_path5.default.join(disabledDir, fileName);
+        if (import_fs8.default.existsSync(sourcePath)) {
+          const success = await this.moveFile(sourcePath, destPath);
+          if (success) {
+            Logger.info("ModHandler", `Disabled mod: Moved ${fileName} to disabled folder`);
+            return { success: true };
+          } else {
+            return { success: false, error: "Move operation failed (check logs)" };
+          }
+        } else {
+          const msg = `Cannot disable: File not found in active folder: ${sourcePath}`;
+          Logger.warn("ModHandler", msg);
+          return { success: false, error: msg };
+        }
+      }
+    } catch (e) {
+      Logger.error("ModHandler", `Failed to toggle mod ${fileName}: ${e.message}`);
+      return { success: false, error: e.message };
+    }
+  }
+  /**
+   * Robust move helper: Try rename, fallback to copy+unlink
+   */
+  async moveFile(src, dest) {
+    try {
+      await import_fs8.default.promises.rename(src, dest);
+      return true;
+    } catch (e) {
+      Logger.warn("ModHandler", `Rename failed for ${import_path5.default.basename(src)}, trying copy+unlink: ${e}`);
+      try {
+        await import_fs8.default.promises.copyFile(src, dest);
+        await import_fs8.default.promises.unlink(src);
+        return true;
+      } catch (e2) {
+        Logger.error("ModHandler", `Move failed completely for ${import_path5.default.basename(src)}: ${e2}`);
+        return false;
+      }
+    }
+  }
+  async getMods() {
+    const possiblePaths = [
+      import_path5.default.join(this.userDataPath, "instances", "default", ".minecraft", "mods"),
+      import_path5.default.join(this.userDataPath, "instances", "default", "mods"),
+      import_path5.default.join(this.userDataPath, "gamedata", "mods")
+    ];
+    let modsDir = "";
+    for (const p of possiblePaths) {
+      if (import_fs8.default.existsSync(p)) {
+        modsDir = p;
+        Logger.info("ModHandler", `Found mods directory at: ${modsDir}`);
+        break;
+      }
+    }
+    if (!modsDir) {
+      Logger.warn("ModHandler", "No valid mods directory found in standard locations.");
+      return [];
+    }
+    this.activeModsDir = modsDir;
+    const disabledDir = import_path5.default.join(modsDir, "disabled");
+    const mods = [];
+    const processDirectory = async (dir, isEnabled) => {
+      if (!import_fs8.default.existsSync(dir)) return;
+      try {
+        const files = await import_fs8.default.promises.readdir(dir);
+        for (const file of files) {
+          if (!file.endsWith(".jar")) continue;
+          const filePath = import_path5.default.join(dir, file);
+          const stat = await import_fs8.default.promises.stat(filePath);
+          if (stat.isDirectory()) continue;
+          let modInfo = {
+            fileName: file,
+            enabled: isEnabled,
+            name: file,
+            // Default to filename
+            description: "",
+            version: ""
+          };
+          try {
+            const zip = new import_adm_zip4.default(filePath);
+            const zipEntries = zip.getEntries();
+            const fabricModJson = zipEntries.find((entry) => entry.entryName === "fabric.mod.json");
+            const legacyModJson = zipEntries.find((entry) => entry.entryName === "mod.json");
+            const metadataEntry = fabricModJson || legacyModJson;
+            if (metadataEntry) {
+              const content = metadataEntry.getData().toString("utf8");
+              const json = JSON.parse(content);
+              if (json.name) modInfo.name = json.name;
+              if (json.description) modInfo.description = json.description;
+              if (json.version) modInfo.version = json.version;
+            }
+          } catch (e) {
+            Logger.warn("ModHandler", `Could not read metadata for ${file}: ${e}`);
+          }
+          mods.push(modInfo);
+        }
+      } catch (e) {
+        Logger.error("ModHandler", `Error scanning directory ${dir}: ${e}`);
+      }
+    };
+    await processDirectory(modsDir, true);
+    await processDirectory(disabledDir, false);
+    return mods.sort((a, b) => {
+      if (a.enabled === b.enabled) {
+        return a.name.localeCompare(b.name);
+      }
+      return a.enabled ? -1 : 1;
+    });
+  }
+};
+
 // electron/main.ts
-import_electron5.app.commandLine.appendSwitch("no-sandbox");
-import_electron5.app.commandLine.appendSwitch("ozone-platform-hint", "auto");
+import_electron6.app.commandLine.appendSwitch("no-sandbox");
+import_electron6.app.commandLine.appendSwitch("ozone-platform-hint", "auto");
 var gameHandler = new GameHandler();
 gameHandler.init();
+var modHandler = new ModHandler();
+modHandler.init();
 console.log("=== BlockyCRAFT Launcher Starting ===");
 console.log("Electron version:", process.versions.electron);
 var mainWindow = null;
 var VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 function createWindow() {
   console.log("Creating main window...");
-  mainWindow = new import_electron5.BrowserWindow({
+  mainWindow = new import_electron6.BrowserWindow({
     width: 900,
     height: 600,
     minWidth: 800,
@@ -4128,30 +4301,13 @@ function createWindow() {
     // Hide menu bar
   });
   mainWindow.setMenu(null);
-  import_electron5.ipcMain.handle("open-external", async (event, url) => {
+  import_electron6.ipcMain.handle("open-external", async (event, url) => {
     console.log("Opening external URL:", url);
-    const openInInternalWindow = () => {
-      const { nativeTheme } = require("electron");
-      nativeTheme.themeSource = "dark";
-      const win = new import_electron5.BrowserWindow({
-        width: 1024,
-        height: 800,
-        title: "BlockyCRAFT",
-        autoHideMenuBar: true,
-        backgroundColor: "#1a1a1a",
-        webPreferences: {
-          nodeIntegration: false,
-          contextIsolation: true
-        }
-      });
-      win.setMenu(null);
-      win.loadURL(url);
-    };
-    if (process.platform === "linux") {
-      openInInternalWindow();
-    } else {
+    try {
       const { shell } = await import("electron");
-      shell.openExternal(url);
+      await shell.openExternal(url);
+    } catch (err) {
+      console.error("Failed to open external URL:", err);
     }
   });
   console.log("Window created, loading content...");
@@ -4177,20 +4333,20 @@ function createWindow() {
     mainWindow = null;
   });
 }
-import_electron5.app.whenReady().then(() => {
+import_electron6.app.whenReady().then(() => {
   Logger.init();
   Logger.info("Main", `Electron version: ${process.versions.electron}`);
   Logger.info("Main", `Node version: ${process.versions.node}`);
   Logger.info("Main", `Platform: ${process.platform} ${process.arch}`);
   createWindow();
 });
-import_electron5.app.on("window-all-closed", () => {
+import_electron6.app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
-    import_electron5.app.quit();
+    import_electron6.app.quit();
   }
 });
-import_electron5.app.on("activate", () => {
-  if (import_electron5.BrowserWindow.getAllWindows().length === 0) {
+import_electron6.app.on("activate", () => {
+  if (import_electron6.BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
 });
