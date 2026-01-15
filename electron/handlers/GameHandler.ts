@@ -697,7 +697,8 @@ export class GameHandler {
                 `-Xmx${maxMem}M`,
                 '-Djava.library.path=' + nativesDir,
                 '-Dorg.lwjgl.librarypath=' + nativesDir, // Fix for some lwjgl versions
-                (openalLibPath ? '-Dorg.lwjgl.openal.libname=' + openalLibPath : ''),
+                // Enable LWJGL debug logging to see library loading attempts
+                '-Dorg.lwjgl.util.Debug=true',
                 '-Dfabric.gameJarPath=' + mcJarPath,
                 '-Dfabric.gameVersion=b1.7.3',
                 '-Dfabric.envType=client',
