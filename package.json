@@ -66,6 +66,7 @@
   },
   "dependencies": {
     "adm-zip": "^0.5.16",
-    "lucide-svelte": "^0.562.0"
+    "lucide-svelte": "^0.562.0",
+    "marked": "^17.0.1"
   }
 }

@@ -1,20 +1,54 @@
 <script lang="ts">
   import { i18n } from "../stores/i18n.svelte";
+  import { marked } from "marked";
+
+  let changelogContent = $state("");
+  let isLoading = $state(false);
+
+  const updateUrls: Record<string, string> = {
+      pt: "https://craft.blocky.com.br/launcher-assets/pt-updates.md",
+      en: "https://craft.blocky.com.br/launcher-assets/en-updates.md",
+      es: "https://craft.blocky.com.br/launcher-assets/es-updates.md"
+  };
+
+  async function fetchUpdates(langCode: string) {
+      // Extract base language (pt-BR -> pt)
+      const baseLang = langCode.split('-')[0].toLowerCase();
+      // Fallback to PT if unknown key, as requested by user logic implies these 3 exist
+      const url = updateUrls[baseLang] || updateUrls['pt']; 
+
+      isLoading = true;
+      try {
+          const res = await fetch(url + '?t=' + Date.now()); // Add timestamp to bust cache
+          if (!res.ok) throw new Error("Failed to fetch");
+          const text = await res.text();
+          // marked.parse can be async
+          changelogContent = await marked.parse(text);
+      } catch (e) {
+          console.error("Failed to fetch changelog:", e);
+          changelogContent = `<p style="color: #ef4444;">Failed to load updates. Please check your internet connection.</p>`;
+      } finally {
+          isLoading = false;
+      }
+  }
+
+  // Reactive fetching
+  $effect(() => {
+     fetchUpdates(i18n.language);
+  });
 </script>
 
 <div class="changelog-panel">
   <h2>{i18n.t("ui.changelog")}</h2>
   <div class="content">
-    <h3>Site offline a partir de amanhã 29/12</h3>
-    <p>O site do BlockyCRAFT entrará em manutenção nessa segunda-feira 29/12.</p>
-    
-    <h4>Não será possível:</h4>
-    <ul>
-      <li>Depositar e sacar itens</li>
-      <li>Utilizar o mapa</li>
-    </ul>
-
-    <p>Tanto o servidor de Minecraft quanto o chat de voz permanecerão funcionando normalmente, já que migramos ele para outra máquina recentemente.</p>
+      {#if isLoading}
+        <div class="loading">Loading updates...</div>
+      {:else}
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+        <div class="markdown-body">
+            {@html changelogContent}
+        </div>
+      {/if}
   </div>
 </div>
 
@@ -26,7 +60,10 @@
     padding: var(--spacing-lg);
     height: 100%;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
   }
+  
   h2 {
     margin: 0 0 var(--spacing-md) 0;
     font-size: 1rem;
@@ -34,39 +71,97 @@
     text-transform: uppercase;
     color: var(--color-text-muted);
     letter-spacing: 0.05em;
+    flex-shrink: 0;
   }
 
-  /* Content Styling */
   .content {
+    flex: 1;
+    overflow-y: auto; /* Scrollable content area */
+    padding-right: 8px; /* Room for scrollbar */
+  }
+
+  .loading {
+    color: var(--color-text-muted);
+    font-style: italic;
+    padding: 20px 0;
+  }
+
+  /* Global styles for generic markdown elements rendered via @html */
+  :global(.markdown-body) {
     color: #e2e8f0;
     line-height: 1.6;
     font-size: 0.95rem;
   }
 
-  .content h3 {
-    font-size: 1.1rem;
-    color: #e2e8f0;
-    margin: 0 0 var(--spacing-sm) 0;
+  :global(.markdown-body h1),
+  :global(.markdown-body h2) {
+    font-size: 1.3rem;
+    color: white;
+    margin: 1.5rem 0 0.75rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 0.3rem;
   }
 
-  .content h4 {
+  :global(.markdown-body h1:first-child),
+  :global(.markdown-body h2:first-child) {
+    margin-top: 0;
+  }
+
+  :global(.markdown-body h3) {
+    font-size: 1.1rem;
+    color: #f1f5f9;
+    margin: 1.25rem 0 0.5rem 0;
+    font-weight: 600;
+  }
+
+  :global(.markdown-body h4) {
     font-size: 1rem;
     color: #cbd5e1;
-    margin: var(--spacing-md) 0 var(--spacing-xs) 0;
+    margin: 1rem 0 0.5rem 0;
   }
 
-  .content p {
-    margin-bottom: var(--spacing-md);
+  :global(.markdown-body p) {
+    margin-bottom: 0.75rem;
+    color: #e2e8f0;
   }
 
-  .content ul {
+  :global(.markdown-body ul), 
+  :global(.markdown-body ol) {
     list-style: disc;
-    padding-left: var(--spacing-lg);
-    margin-bottom: var(--spacing-md);
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
     color: #cbd5e1;
   }
+  
+  :global(.markdown-body li) {
+    margin-bottom: 0.25rem;
+  }
 
-  .content li {
-    margin-bottom: 4px;
+  :global(.markdown-body a) {
+    color: var(--color-primary);
+    text-decoration: none;
+  }
+
+  :global(.markdown-body a:hover) {
+    text-decoration: underline;
+  }
+  
+  :global(.markdown-body strong) {
+    color: white;
+    font-weight: 700;
+  }
+  
+  :global(.markdown-body code) {
+    background: rgba(0,0,0,0.3);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9em;
+  }
+  
+  :global(.markdown-body hr) {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    margin: 1.5rem 0;
   }
 </style>
