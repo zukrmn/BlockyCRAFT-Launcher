@@ -666,25 +666,23 @@ export class GameHandler {
             }
 
             // Base launch args - Matching PrismLauncher configuration
-            // IMPORTANT: Use forward slashes for paths (like PrismLauncher does)
-            // and only use -Djava.library.path (NOT -Dorg.lwjgl.librarypath or openal.libname)
-            const nativesDirForward = nativesDir.replace(/\\/g, '/');
-            const dotMinecraftForward = dotMinecraft.replace(/\\/g, '/');
-            const resourcesPath = path.join(dotMinecraft, 'resources').replace(/\\/g, '/');
+            // IMPORTANT: Use NATIVE path separators (Backslashes on Windows)
+            // PrismLauncher logs show forward slashes but likely uses backslashes internally for the actual process spawn on Windows
+            const resourcesPath = path.join(dotMinecraft, 'resources');
 
             const launchArgs: string[] = [
                 `-Xms${minMem}M`,
                 `-Xmx${maxMem}M`,
-                // Match PrismLauncher: only java.library.path with forward slashes
-                '-Djava.library.path=' + nativesDirForward,
-                '-Dfabric.gameJarPath=' + mcJarPath.replace(/\\/g, '/'),
+                // Use native path separators
+                '-Djava.library.path=' + nativesDir,
+                '-Dfabric.gameJarPath=' + mcJarPath,
                 '-Dfabric.gameVersion=b1.7.3',
                 '-Dfabric.envType=client',
                 // Suppress SLF4J "no providers" warning
                 '-Dslf4j.internal.verbosity=ERROR',
                 // Disable legacy resource downloads from defunct S3 bucket
                 '-Dminecraft.resources.index=' + resourcesPath,
-                '-Dminecraft.applet.TargetDirectory=' + dotMinecraftForward,
+                '-Dminecraft.applet.TargetDirectory=' + dotMinecraft,
                 '-Dminecraft.applet.BaseURL=file:///',
             ];
 
