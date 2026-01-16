@@ -50,7 +50,7 @@
 
 <div class="changelog-panel">
   <h2>{i18n.t("ui.changelog")}</h2>
-  <div class="content">
+  <div class="content smart-scroll">
       {#if isLoading}
         <div class="loading">Loading updates...</div>
       {:else}
