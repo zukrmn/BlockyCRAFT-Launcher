@@ -7,6 +7,10 @@ var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __commonJS = (cb, mod) => function __require() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
 };
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
     for (let key of __getOwnPropNames(from))
@@ -23,6 +27,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // node_modules/adm-zip/util/constants.js
 var require_constants = __commonJS({
@@ -2681,7 +2686,12 @@ var require_adm_zip = __commonJS({
 });
 
 // electron/main.ts
-var import_electron6 = require("electron");
+var main_exports = {};
+__export(main_exports, {
+  getOverlayHandler: () => getOverlayHandler
+});
+module.exports = __toCommonJS(main_exports);
+var import_electron7 = require("electron");
 var import_node_path = __toESM(require("node:path"), 1);
 
 // electron/handlers/Logger.ts
@@ -4021,6 +4031,10 @@ var GameHandler = class {
         cwd: dotMinecraft,
         env: gameEnv
       });
+      const overlayHandler2 = getOverlayHandler();
+      if (overlayHandler2) {
+        overlayHandler2.setGameRunning(true);
+      }
       const suppressedPatterns = [
         "s3.amazonaws.com/MinecraftResources",
         "Failed to add pack.mcmeta",
@@ -4053,6 +4067,10 @@ var GameHandler = class {
         this.sendProgress(event.sender, "Jogo fechado", 100);
         this.gameProcess = null;
         event.sender.send("game-closed", code);
+        const overlayHandler3 = getOverlayHandler();
+        if (overlayHandler3) {
+          overlayHandler3.setGameRunning(false);
+        }
       });
       return { success: true };
     } catch (e) {
@@ -4269,20 +4287,388 @@ var ModHandler = class {
   }
 };
 
+// electron/handlers/OverlayHandler.ts
+var import_electron6 = require("electron");
+var OverlayHandler = class {
+  overlayWindow = null;
+  backdropWindow = null;
+  isVisible = false;
+  isGameRunning = false;
+  hotkeyRegistered = false;
+  OVERLAY_URL = "https://craft.blocky.com.br";
+  /**
+   * Initialize the overlay handler
+   * Called after app is ready
+   */
+  init() {
+    Logger.info("OverlayHandler", "Initializing overlay handler");
+    this.registerHotkey();
+    this.setupIPC();
+  }
+  /**
+   * Setup IPC handlers for overlay navigation
+   */
+  setupIPC() {
+    import_electron6.ipcMain.on("overlay-go-back", () => {
+      if (this.overlayWindow && !this.overlayWindow.isDestroyed()) {
+        if (this.overlayWindow.webContents.canGoBack()) {
+          this.overlayWindow.webContents.goBack();
+          Logger.info("OverlayHandler", "Navigated back");
+        }
+      }
+    });
+    import_electron6.ipcMain.on("overlay-go-home", () => {
+      if (this.overlayWindow && !this.overlayWindow.isDestroyed()) {
+        this.overlayWindow.webContents.loadURL(this.OVERLAY_URL);
+        Logger.info("OverlayHandler", "Navigated to home");
+      }
+    });
+    import_electron6.ipcMain.on("overlay-close", () => {
+      this.hideOverlay();
+      Logger.info("OverlayHandler", "Closed via IPC");
+    });
+  }
+  /**
+   * Register the Shift+Tab global hotkey
+   */
+  registerHotkey() {
+    try {
+      const registered = import_electron6.globalShortcut.register("Shift+Tab", () => {
+        Logger.info("OverlayHandler", "Shift+Tab pressed");
+        this.toggleOverlay();
+      });
+      if (registered) {
+        this.hotkeyRegistered = true;
+        Logger.info("OverlayHandler", "Shift+Tab hotkey registered successfully");
+      } else {
+        Logger.error("OverlayHandler", "Failed to register Shift+Tab hotkey");
+      }
+    } catch (e) {
+      Logger.error("OverlayHandler", `Failed to register hotkey: ${e.message}`);
+    }
+  }
+  /**
+   * Unregister all shortcuts - call on app quit
+   */
+  cleanup() {
+    if (this.hotkeyRegistered) {
+      import_electron6.globalShortcut.unregister("Shift+Tab");
+      this.hotkeyRegistered = false;
+      Logger.info("OverlayHandler", "Hotkey unregistered");
+    }
+    if (this.backdropWindow && !this.backdropWindow.isDestroyed()) {
+      this.backdropWindow.destroy();
+      this.backdropWindow = null;
+    }
+    if (this.overlayWindow && !this.overlayWindow.isDestroyed()) {
+      this.overlayWindow.destroy();
+      this.overlayWindow = null;
+    }
+  }
+  /**
+   * Create the backdrop window (10% transparent fullscreen)
+   */
+  createBackdropWindow() {
+    const primaryDisplay = import_electron6.screen.getPrimaryDisplay();
+    const { width, height } = primaryDisplay.size;
+    this.backdropWindow = new import_electron6.BrowserWindow({
+      width,
+      height,
+      x: 0,
+      y: 0,
+      frame: false,
+      transparent: true,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      show: false,
+      resizable: false,
+      movable: false,
+      focusable: false,
+      hasShadow: false,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true
+      }
+    });
+    const backdropHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        * { margin: 0; padding: 0; }
+        html, body {
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body></body>
+</html>`;
+    this.backdropWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(backdropHtml)}`);
+    this.backdropWindow.setIgnoreMouseEvents(true);
+  }
+  /**
+   * Create the browser overlay window with navigation header
+   */
+  createOverlayWindow() {
+    if (this.overlayWindow && !this.overlayWindow.isDestroyed()) {
+      Logger.info("OverlayHandler", "Overlay window already exists");
+      return;
+    }
+    const primaryDisplay = import_electron6.screen.getPrimaryDisplay();
+    const { width: screenWidth, height: screenHeight } = primaryDisplay.size;
+    const browserWidth = Math.min(Math.floor(screenWidth * 0.85), 1400);
+    const browserHeight = Math.min(Math.floor(screenHeight * 0.85), 900);
+    const x = Math.floor((screenWidth - browserWidth) / 2);
+    const y = Math.floor((screenHeight - browserHeight) / 2);
+    Logger.info("OverlayHandler", `Creating overlay: ${browserWidth}x${browserHeight} at (${x}, ${y})`);
+    this.createBackdropWindow();
+    this.overlayWindow = new import_electron6.BrowserWindow({
+      width: browserWidth,
+      height: browserHeight,
+      x,
+      y,
+      frame: false,
+      transparent: false,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      show: false,
+      resizable: false,
+      movable: false,
+      focusable: true,
+      hasShadow: true,
+      backgroundColor: "#1b2838",
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        sandbox: false,
+        preload: void 0
+      }
+    });
+    this.overlayWindow.webContents.on("did-start-loading", () => {
+      Logger.info("OverlayHandler", "Browser started loading");
+    });
+    this.overlayWindow.webContents.on("did-finish-load", () => {
+      Logger.info("OverlayHandler", "Browser finished loading");
+      this.injectNavigationBar();
+    });
+    this.overlayWindow.webContents.on("did-fail-load", (event, errorCode, errorDescription, validatedURL) => {
+      Logger.error("OverlayHandler", `Failed to load: ${errorCode} - ${errorDescription}`);
+    });
+    this.overlayWindow.webContents.on("render-process-gone", (event, details) => {
+      Logger.error("OverlayHandler", `Renderer process gone: ${details.reason}`);
+      this.overlayWindow = null;
+    });
+    this.overlayWindow.webContents.on("before-input-event", (event, input) => {
+      if (input.key === "Escape" && input.type === "keyDown") {
+        Logger.info("OverlayHandler", "Escape pressed - hiding overlay");
+        this.hideOverlay();
+      }
+    });
+    this.overlayWindow.on("close", (event) => {
+      if (!this.overlayWindow?.isDestroyed()) {
+        event.preventDefault();
+        this.hideOverlay();
+      }
+    });
+    this.overlayWindow.webContents.setWindowOpenHandler(({ url }) => {
+      Logger.info("OverlayHandler", `Intercepted new window request: ${url}`);
+      if (this.overlayWindow && !this.overlayWindow.isDestroyed()) {
+        this.overlayWindow.webContents.loadURL(url);
+      }
+      return { action: "deny" };
+    });
+    Logger.info("OverlayHandler", `Loading URL: ${this.OVERLAY_URL}`);
+    this.overlayWindow.loadURL(this.OVERLAY_URL);
+    Logger.info("OverlayHandler", "Overlay window created");
+  }
+  /**
+   * Inject navigation bar into the page
+   */
+  injectNavigationBar() {
+    if (!this.overlayWindow || this.overlayWindow.isDestroyed()) return;
+    const navBarCSS = `
+            #blockycraft-nav-bar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 40px;
+                background: #1e1e1e;
+                border-bottom: 1px solid #333333;
+                display: flex;
+                align-items: center;
+                padding: 0 12px;
+                gap: 8px;
+                z-index: 999999;
+                font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            }
+            #blockycraft-nav-bar button {
+                background: #2a2a2a;
+                border: 1px solid #333333;
+                color: #ffffff;
+                padding: 6px 14px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 500;
+                transition: all 0.2s;
+            }
+            #blockycraft-nav-bar button:hover {
+                background: #333333;
+                border-color: #444444;
+            }
+            #blockycraft-nav-bar button:disabled {
+                opacity: 0.4;
+                cursor: not-allowed;
+            }
+            #blockycraft-nav-bar .nav-title {
+                color: #a1a1aa;
+                font-size: 12px;
+                margin-left: auto;
+            }
+            #blockycraft-nav-bar .close-btn {
+                background: #f59e0b;
+                border-color: #f59e0b;
+                color: #000000;
+                font-weight: 600;
+            }
+            #blockycraft-nav-bar .close-btn:hover {
+                background: #d97706;
+                border-color: #d97706;
+            }
+            body {
+                padding-top: 40px !important;
+            }
+        `;
+    const navBarHTML = `
+            <div id="blockycraft-nav-bar">
+                <button id="bc-back-btn" title="Voltar">\u2190 Voltar</button>
+                <button id="bc-home-btn" title="In\xEDcio">\u{1F3E0} In\xEDcio</button>
+                <span class="nav-title">BlockyCRAFT Browser \u2022 Shift+Tab para fechar</span>
+                <button class="close-btn" id="bc-close-btn" title="Fechar">\u2715</button>
+            </div>
+        `;
+    const injectScript = `
+            (function() {
+                // Remove existing nav bar if present
+                const existing = document.getElementById('blockycraft-nav-bar');
+                if (existing) existing.remove();
+
+                // Add CSS
+                const style = document.createElement('style');
+                style.textContent = \`${navBarCSS.replace(/`/g, "\\`")}\`;
+                document.head.appendChild(style);
+
+                // Add nav bar
+                document.body.insertAdjacentHTML('afterbegin', \`${navBarHTML.replace(/`/g, "\\`")}\`);
+
+                // Button handlers
+                document.getElementById('bc-back-btn').onclick = () => history.back();
+                document.getElementById('bc-home-btn').onclick = () => window.location.href = '${this.OVERLAY_URL}';
+                document.getElementById('bc-close-btn').onclick = () => window.close();
+
+                // Update back button state
+                const updateBackBtn = () => {
+                    document.getElementById('bc-back-btn').disabled = history.length <= 1;
+                };
+                updateBackBtn();
+            })();
+        `;
+    this.overlayWindow.webContents.executeJavaScript(injectScript).catch((err) => {
+      Logger.error("OverlayHandler", `Failed to inject nav bar: ${err.message}`);
+    });
+  }
+  /**
+   * Toggle overlay visibility
+   */
+  toggleOverlay() {
+    if (!this.isGameRunning) {
+      Logger.info("OverlayHandler", "Game not running - overlay disabled");
+      return;
+    }
+    if (this.isVisible) {
+      this.hideOverlay();
+    } else {
+      this.showOverlay();
+    }
+  }
+  /**
+   * Show the overlay
+   */
+  showOverlay() {
+    if (!this.overlayWindow || this.overlayWindow.isDestroyed()) {
+      Logger.info("OverlayHandler", "Creating overlay window on first use...");
+      this.createOverlayWindow();
+    }
+    if (this.backdropWindow && !this.backdropWindow.isDestroyed()) {
+      this.backdropWindow.show();
+      this.backdropWindow.setAlwaysOnTop(true, "screen-saver");
+    }
+    if (this.overlayWindow) {
+      this.overlayWindow.show();
+      this.overlayWindow.focus();
+      this.overlayWindow.setAlwaysOnTop(true, "screen-saver");
+      this.isVisible = true;
+      Logger.info("OverlayHandler", "Overlay shown");
+    }
+  }
+  /**
+   * Hide the overlay
+   */
+  hideOverlay() {
+    if (this.backdropWindow && !this.backdropWindow.isDestroyed()) {
+      this.backdropWindow.hide();
+    }
+    if (this.overlayWindow && !this.overlayWindow.isDestroyed()) {
+      this.overlayWindow.hide();
+      this.isVisible = false;
+      Logger.info("OverlayHandler", "Overlay hidden");
+    }
+  }
+  /**
+   * Set game running state - called by GameHandler
+   */
+  setGameRunning(running) {
+    this.isGameRunning = running;
+    Logger.info("OverlayHandler", `Game running state: ${running}`);
+    if (!running && this.isVisible) {
+      this.hideOverlay();
+    }
+  }
+  /**
+   * Check if game is currently running
+   */
+  isGameActive() {
+    return this.isGameRunning;
+  }
+  /**
+   * Check if overlay is currently visible
+   */
+  isOverlayVisible() {
+    return this.isVisible;
+  }
+};
+
 // electron/main.ts
-import_electron6.app.commandLine.appendSwitch("no-sandbox");
-import_electron6.app.commandLine.appendSwitch("ozone-platform-hint", "auto");
+import_electron7.app.commandLine.appendSwitch("no-sandbox");
+import_electron7.app.commandLine.appendSwitch("ozone-platform-hint", "auto");
 var gameHandler = new GameHandler();
 gameHandler.init();
 var modHandler = new ModHandler();
 modHandler.init();
+var overlayHandler = null;
+function getOverlayHandler() {
+  return overlayHandler;
+}
 console.log("=== BlockyCRAFT Launcher Starting ===");
 console.log("Electron version:", process.versions.electron);
 var mainWindow = null;
 var VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 function createWindow() {
   console.log("Creating main window...");
-  mainWindow = new import_electron6.BrowserWindow({
+  mainWindow = new import_electron7.BrowserWindow({
     width: 900,
     height: 600,
     minWidth: 800,
@@ -4301,7 +4687,7 @@ function createWindow() {
     // Hide menu bar
   });
   mainWindow.setMenu(null);
-  import_electron6.ipcMain.handle("open-external", async (event, url) => {
+  import_electron7.ipcMain.handle("open-external", async (event, url) => {
     console.log("Opening external URL:", url);
     try {
       const { shell } = await import("electron");
@@ -4310,7 +4696,7 @@ function createWindow() {
       console.error("Failed to open external URL:", err);
     }
   });
-  import_electron6.ipcMain.handle("fetch-url", async (event, url) => {
+  import_electron7.ipcMain.handle("fetch-url", async (event, url) => {
     Logger.info("Main", `Proxying fetch request to: ${url}`);
     const { net } = await import("electron");
     try {
@@ -4348,21 +4734,33 @@ function createWindow() {
     mainWindow = null;
   });
 }
-import_electron6.app.whenReady().then(() => {
+import_electron7.app.whenReady().then(() => {
   Logger.init();
   Logger.info("Main", `Electron version: ${process.versions.electron}`);
   Logger.info("Main", `Node version: ${process.versions.node}`);
   Logger.info("Main", `Platform: ${process.platform} ${process.arch}`);
+  overlayHandler = new OverlayHandler();
+  overlayHandler.init();
   createWindow();
 });
-import_electron6.app.on("window-all-closed", () => {
+import_electron7.app.on("will-quit", () => {
+  if (overlayHandler) {
+    overlayHandler.cleanup();
+  }
+  import_electron7.globalShortcut.unregisterAll();
+});
+import_electron7.app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
-    import_electron6.app.quit();
+    import_electron7.app.quit();
   }
 });
-import_electron6.app.on("activate", () => {
-  if (import_electron6.BrowserWindow.getAllWindows().length === 0) {
+import_electron7.app.on("activate", () => {
+  if (import_electron7.BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
+});
+// Annotate the CommonJS export names for ESM import in node:
+0 && (module.exports = {
+  getOverlayHandler
 });
 //# sourceMappingURL=main.cjs.map

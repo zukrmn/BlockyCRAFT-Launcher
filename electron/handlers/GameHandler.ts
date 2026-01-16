@@ -8,6 +8,7 @@ import { createWriteStream } from 'fs';
 import { JavaManager } from './JavaManager.js';
 import { UpdateManager } from './UpdateManager.js';
 import { Logger } from './Logger.js';
+import { getOverlayHandler } from '../main.js';
 
 const execAsync = promisify(exec);
 
@@ -742,6 +743,12 @@ export class GameHandler {
                 env: gameEnv
             });
 
+            // Notify overlay that game is now running
+            const overlayHandler = getOverlayHandler();
+            if (overlayHandler) {
+                overlayHandler.setGameRunning(true);
+            }
+
             // Filter patterns for known harmless messages
             const suppressedPatterns = [
                 's3.amazonaws.com/MinecraftResources',
@@ -790,6 +797,12 @@ export class GameHandler {
                 this.sendProgress(event.sender, 'Jogo fechado', 100);
                 this.gameProcess = null;
                 event.sender.send('game-closed', code);
+
+                // Notify overlay that game has stopped
+                const overlayHandler = getOverlayHandler();
+                if (overlayHandler) {
+                    overlayHandler.setGameRunning(false);
+                }
             });
 
             return { success: true };

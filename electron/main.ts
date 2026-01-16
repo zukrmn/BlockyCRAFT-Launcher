@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, globalShortcut } from 'electron';
 import path from 'node:path';
 
 // Add command line switches before app is ready
@@ -8,6 +8,7 @@ app.commandLine.appendSwitch('ozone-platform-hint', 'auto');
 import { Logger } from './handlers/Logger.js';
 import { GameHandler } from './handlers/GameHandler.js';
 import { ModHandler } from './handlers/ModHandler.js';
+import { OverlayHandler } from './handlers/OverlayHandler.js';
 
 // Initialize logger as early as possible (after imports)
 // Note: Full init happens in app.whenReady() when userData is available
@@ -16,6 +17,14 @@ gameHandler.init();
 
 const modHandler = new ModHandler();
 modHandler.init();
+
+// Overlay handler is initialized in app.whenReady() since it needs screen API
+let overlayHandler: OverlayHandler | null = null;
+
+// Export overlayHandler for use in GameHandler
+export function getOverlayHandler(): OverlayHandler | null {
+    return overlayHandler;
+}
 
 console.log('=== BlockyCRAFT Launcher Starting ===');
 
@@ -115,7 +124,19 @@ app.whenReady().then(() => {
     Logger.info('Main', `Node version: ${process.versions.node}`);
     Logger.info('Main', `Platform: ${process.platform} ${process.arch}`);
 
+    // Initialize overlay handler (needs screen API which is ready now)
+    overlayHandler = new OverlayHandler();
+    overlayHandler.init();
+
     createWindow();
+});
+
+// Cleanup shortcuts on quit
+app.on('will-quit', () => {
+    if (overlayHandler) {
+        overlayHandler.cleanup();
+    }
+    globalShortcut.unregisterAll();
 });
 
 app.on('window-all-closed', () => {

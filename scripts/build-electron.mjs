@@ -31,6 +31,18 @@ async function buildElectron() {
     sourcemap: true,
   });
 
+  // Build overlay preload script
+  await build({
+    entryPoints: [join(projectRoot, 'electron/handlers/overlay-preload.ts')],
+    bundle: true,
+    platform: 'node',
+    target: 'node18',
+    outfile: join(projectRoot, 'dist-electron/overlay-preload.cjs'),
+    external: ['electron'],
+    format: 'cjs',
+    sourcemap: true,
+  });
+
   console.log('✓ Electron files built successfully');
 }
 
