@@ -242,7 +242,7 @@ export class OverlayHandler {
             webPreferences: {
                 nodeIntegration: false,
                 contextIsolation: true,
-                sandbox: false,
+                sandbox: process.platform !== 'linux',
             }
         });
 
