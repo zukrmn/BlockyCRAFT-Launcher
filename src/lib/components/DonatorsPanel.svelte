@@ -37,7 +37,7 @@
   });
 </script>
 
-<div class="donators-panel">
+<div class="donators-panel smart-scroll">
   <h3>{i18n.t("ui.donators")}</h3>
   <div class="grid">
     {#if isLoading}
