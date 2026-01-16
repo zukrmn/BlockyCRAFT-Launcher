@@ -4292,7 +4292,6 @@ var import_electron6 = require("electron");
 var OverlayHandler = class {
   overlayWindow = null;
   browserView = null;
-  backdropWindow = null;
   isVisible = false;
   isGameRunning = false;
   hotkeyRegistered = false;
@@ -4358,10 +4357,6 @@ var OverlayHandler = class {
       this.hotkeyRegistered = false;
       Logger.info("OverlayHandler", "Hotkey unregistered");
     }
-    if (this.backdropWindow && !this.backdropWindow.isDestroyed()) {
-      this.backdropWindow.destroy();
-      this.backdropWindow = null;
-    }
     if (this.overlayWindow && !this.overlayWindow.isDestroyed()) {
       this.overlayWindow.setBrowserView(null);
       if (this.browserView && !this.browserView.webContents.isDestroyed()) {
@@ -4371,49 +4366,6 @@ var OverlayHandler = class {
       this.overlayWindow = null;
       this.browserView = null;
     }
-  }
-  /**
-   * Create the backdrop window (10% transparent fullscreen)
-   */
-  createBackdropWindow() {
-    const primaryDisplay = import_electron6.screen.getPrimaryDisplay();
-    const { width, height } = primaryDisplay.size;
-    this.backdropWindow = new import_electron6.BrowserWindow({
-      width,
-      height,
-      x: 0,
-      y: 0,
-      frame: false,
-      transparent: true,
-      alwaysOnTop: true,
-      skipTaskbar: true,
-      show: false,
-      resizable: false,
-      movable: false,
-      focusable: false,
-      hasShadow: false,
-      webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true
-      }
-    });
-    const backdropHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        * { margin: 0; padding: 0; }
-        html, body {
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.1);
-        }
-    </style>
-</head>
-<body></body>
-</html>`;
-    this.backdropWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(backdropHtml)}`);
-    this.backdropWindow.setIgnoreMouseEvents(true);
   }
   /**
    * Create the overlay window containing the header and the BrowserView
@@ -4430,7 +4382,6 @@ var OverlayHandler = class {
     const x = Math.floor((screenWidth - windowWidth) / 2);
     const y = Math.floor((screenHeight - windowHeight) / 2);
     Logger.info("OverlayHandler", `Creating overlay: ${windowWidth}x${windowHeight} at (${x}, ${y})`);
-    this.createBackdropWindow();
     this.overlayWindow = new import_electron6.BrowserWindow({
       width: windowWidth,
       height: windowHeight,
@@ -4611,10 +4562,6 @@ var OverlayHandler = class {
       Logger.info("OverlayHandler", "Creating overlay window on first use...");
       this.createOverlayWindow();
     }
-    if (this.backdropWindow && !this.backdropWindow.isDestroyed()) {
-      this.backdropWindow.show();
-      this.backdropWindow.setAlwaysOnTop(true, "screen-saver");
-    }
     if (this.overlayWindow) {
       this.overlayWindow.show();
       this.overlayWindow.focus();
@@ -4627,9 +4574,6 @@ var OverlayHandler = class {
    * Hide the overlay
    */
   hideOverlay() {
-    if (this.backdropWindow && !this.backdropWindow.isDestroyed()) {
-      this.backdropWindow.hide();
-    }
     if (this.overlayWindow && !this.overlayWindow.isDestroyed()) {
       this.overlayWindow.hide();
       this.isVisible = false;

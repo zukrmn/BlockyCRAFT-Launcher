@@ -37,6 +37,9 @@ core
 
 # Log
 LOG.md  
+DEBUG.md
+PROMPT.md
 
 # Dist out
 dist-out/
+*.AppImage

@@ -9,7 +9,6 @@ import path from 'path';
 export class OverlayHandler {
     private overlayWindow: BrowserWindow | null = null;
     private browserView: BrowserView | null = null;
-    private backdropWindow: BrowserWindow | null = null;
     private isVisible: boolean = false;
     private isGameRunning: boolean = false;
     private hotkeyRegistered: boolean = false;
@@ -84,11 +83,6 @@ export class OverlayHandler {
             Logger.info('OverlayHandler', 'Hotkey unregistered');
         }
 
-        if (this.backdropWindow && !this.backdropWindow.isDestroyed()) {
-            this.backdropWindow.destroy();
-            this.backdropWindow = null;
-        }
-
         if (this.overlayWindow && !this.overlayWindow.isDestroyed()) {
             // Remove view first
             this.overlayWindow.setBrowserView(null);
@@ -104,54 +98,6 @@ export class OverlayHandler {
             this.overlayWindow = null;
             this.browserView = null;
         }
-    }
-
-    /**
-     * Create the backdrop window (10% transparent fullscreen)
-     */
-    private createBackdropWindow(): void {
-        const primaryDisplay = screen.getPrimaryDisplay();
-        const { width, height } = primaryDisplay.size;
-
-        this.backdropWindow = new BrowserWindow({
-            width: width,
-            height: height,
-            x: 0,
-            y: 0,
-            frame: false,
-            transparent: true,
-            alwaysOnTop: true,
-            skipTaskbar: true,
-            show: false,
-            resizable: false,
-            movable: false,
-            focusable: false,
-            hasShadow: false,
-            webPreferences: {
-                nodeIntegration: false,
-                contextIsolation: true,
-            },
-        });
-
-        // Load backdrop with 10% opacity
-        const backdropHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        * { margin: 0; padding: 0; }
-        html, body {
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.1);
-        }
-    </style>
-</head>
-<body></body>
-</html>`;
-
-        this.backdropWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(backdropHtml)}`);
-        this.backdropWindow.setIgnoreMouseEvents(true);
     }
 
     /**
@@ -176,9 +122,6 @@ export class OverlayHandler {
         const y = Math.floor((screenHeight - windowHeight) / 2);
 
         Logger.info('OverlayHandler', `Creating overlay: ${windowWidth}x${windowHeight} at (${x}, ${y})`);
-
-        // Create backdrop first
-        this.createBackdropWindow();
 
         // Create the main window (container)
         this.overlayWindow = new BrowserWindow({
@@ -390,11 +333,6 @@ export class OverlayHandler {
             this.createOverlayWindow();
         }
 
-        if (this.backdropWindow && !this.backdropWindow.isDestroyed()) {
-            this.backdropWindow.show();
-            this.backdropWindow.setAlwaysOnTop(true, 'screen-saver');
-        }
-
         if (this.overlayWindow) {
             this.overlayWindow.show();
             this.overlayWindow.focus();
@@ -408,10 +346,6 @@ export class OverlayHandler {
      * Hide the overlay
      */
     private hideOverlay(): void {
-        if (this.backdropWindow && !this.backdropWindow.isDestroyed()) {
-            this.backdropWindow.hide();
-        }
-
         if (this.overlayWindow && !this.overlayWindow.isDestroyed()) {
             this.overlayWindow.hide();
             this.isVisible = false;
