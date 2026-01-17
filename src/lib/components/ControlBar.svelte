@@ -88,16 +88,60 @@
     filter: brightness(1.1);
   }
 
-  .btn-donate {
-    background: var(--color-primary);
-    color: white;
-    min-width: 100px;
-  }
+
 
   .btn-play {
     background: white;
     color: black;
     min-width: 100px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Pulse animation for Play button */
+  @keyframes pulse-white {
+    0% {
+      box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+    }
+  }
+
+  /* Pulse animation for Donate button */
+  @keyframes pulse-orange {
+    0% {
+      box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(245, 158, 11, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+    }
+  }
+
+  .btn-donate {
+    background: var(--color-primary);
+    color: white;
+    min-width: 100px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .btn-donate:hover {
+    animation: pulse-orange 1.5s infinite;
+    transform: translateY(-2px) scale(1.05);
+    background: var(--color-primary-hover);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  }
+
+  .btn-play:not(:disabled):hover {
+    animation: pulse-white 1.5s infinite;
+    transform: translateY(-2px) scale(1.05);
+    background: #ffffff;
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
   }
 
   .input-wrapper {

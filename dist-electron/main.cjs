@@ -4496,7 +4496,7 @@ var OverlayHandler = class {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
-        sandbox: false
+        sandbox: process.platform !== "linux"
       }
     });
     this.overlayWindow.setBrowserView(this.browserView);
