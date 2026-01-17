@@ -67,13 +67,40 @@
     overflow-y: auto;
   }
 
+  @keyframes shine {
+    0% {
+      background-position: 0% center;
+    }
+    100% {
+      background-position: -200% center;
+    }
+  }
+
   h3 {
     margin: 0 0 var(--spacing-md) 0;
     font-size: 1rem;
-    font-weight: 600;
-    color: var(--color-primary);
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    
+    /* Golden Gradient with Shine Animation - Cyclic for seamless loop */
+    background: linear-gradient(
+      to right, 
+      #bf953f 0%, 
+      #fcf6ba 40%,
+      #ffffff 50%,
+      #fcf6ba 60%,
+      #bf953f 100%
+    );
+    background-size: 200% auto;
+    
+    color: #bf953f; /* Fallback */
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    
+    animation: shine 2s linear infinite;
+    display: inline-block;
   }
 
   .grid {

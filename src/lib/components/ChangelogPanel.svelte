@@ -148,7 +148,7 @@
   }
 
   :global(.markdown-body a) {
-    color: var(--color-primary);
+    color: #4ade80;
     text-decoration: none;
   }
 
