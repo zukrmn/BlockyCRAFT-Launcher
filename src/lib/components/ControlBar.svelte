@@ -110,31 +110,57 @@
     }
   }
 
-  /* Pulse animation for Donate button */
-  @keyframes pulse-orange {
+  /* Shine animation */
+  @keyframes shine {
     0% {
-      box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
-    }
-    70% {
-      box-shadow: 0 0 0 10px rgba(245, 158, 11, 0);
+      background-position: 0% center;
     }
     100% {
-      box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+      background-position: -200% center;
+    }
+  }
+
+  /* Pulse animation for Donate button (Gold) */
+  @keyframes pulse-gold {
+    0% {
+      box-shadow: 0 0 0 0 rgba(191, 149, 63, 0.7);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(191, 149, 63, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(191, 149, 63, 0);
     }
   }
 
   .btn-donate {
-    background: var(--color-primary);
-    color: white;
+    /* Golden Gradient with Shine Animation - Cyclic for seamless loop */
+    background: linear-gradient(
+      to right, 
+      #bf953f 0%, 
+      #fcf6ba 40%,
+      #ffffff 50%,
+      #fcf6ba 60%,
+      #bf953f 100%
+    );
+    background-size: 200% auto;
+    animation: shine 2s linear infinite;
+    
+    color: #5c4010; /* Darker Gold/Brown text for contrast against bright shine */
+    text-shadow: 0 1px 0 rgba(255,255,255, 0.4);
+    font-weight: 800; /* Extra bold for better visibility */
+    
     min-width: 100px;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .btn-donate:hover {
-    animation: pulse-orange 1.5s infinite;
     transform: translateY(-2px) scale(1.05);
-    background: var(--color-primary-hover);
-    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+    /* Keep animation running, maybe brighter filter? */
+    filter: brightness(1.1);
+    box-shadow: 0 4px 12px rgba(191, 149, 63, 0.4);
+    /* Add pulse on hover too */
+    animation: shine 2s linear infinite, pulse-gold 1.5s infinite;
   }
 
   .btn-play:not(:disabled):hover {
