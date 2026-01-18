@@ -46,6 +46,15 @@
   $effect(() => {
      fetchUpdates(i18n.lang);
   });
+  // Intercept clicks on links to open independently
+  function handleLinkClick(event: MouseEvent) {
+    const target = event.target as HTMLElement;
+    const anchor = target.closest('a');
+    if (anchor && anchor.href) {
+      event.preventDefault();
+      ElectronService.openExternal(anchor.href);
+    }
+  }
 </script>
 
 <div class="changelog-panel">
@@ -55,7 +64,9 @@
         <div class="loading">Loading updates...</div>
       {:else}
         <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-        <div class="markdown-body">
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div class="markdown-body" onclick={handleLinkClick}>
             {@html changelogContent}
         </div>
       {/if}

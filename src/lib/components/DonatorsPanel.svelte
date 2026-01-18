@@ -35,6 +35,10 @@
   $effect(() => {
     fetchDonators();
   });
+
+  function openScoreboard() {
+    ElectronService.openExternal("https://craft.blocky.com.br/scoreboard/");
+  }
 </script>
 
 <div class="donators-panel smart-scroll">
@@ -44,14 +48,15 @@
         <div class="loading">Loading...</div>
     {:else}
         {#each donators as donor}
-        <div class="donor-item" title={donor.name}>
+        <!-- Converting div to button for accessibility and interaction -->
+        <button class="donor-item" title={donor.name} onclick={openScoreboard}>
             <img 
             src="https://minotar.net/avatar/{donor.name}/64" 
             alt={donor.name}
             loading="lazy"
             />
             <span class="donor-name">{donor.name}</span>
-        </div>
+        </button>
         {/each}
     {/if}
   </div>
@@ -114,6 +119,16 @@
     flex-direction: column;
     align-items: center;
     gap: 4px;
+    /* Reset button styles */
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+
+  .donor-item:hover {
+      transform: translateY(-2px);
   }
 
   img {
