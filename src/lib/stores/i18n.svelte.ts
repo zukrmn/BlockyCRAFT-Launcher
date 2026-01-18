@@ -27,7 +27,10 @@ export const translations: Record<string, Record<string, string>> = {
         "status.downloading": "Downloading",
         "settings.tab.general": "General",
         "settings.tab.mods": "Mods",
-        "settings.mods.empty": "No mods found."
+        "settings.mods.empty": "No mods found.",
+        "ui.tutorial_opened": "Opened in browser!",
+        "ui.tutorial_title": "Tutorial",
+        "ui.tutorial_subtitle": "Learn the server basics."
     },
     "pt-BR": {
         "ui.donate": "Doar",
@@ -57,7 +60,10 @@ export const translations: Record<string, Record<string, string>> = {
         "status.downloading": "Baixando",
         "settings.tab.general": "Geral",
         "settings.tab.mods": "Mods",
-        "settings.mods.empty": "Nenhum mod encontrado."
+        "settings.mods.empty": "Nenhum mod encontrado.",
+        "ui.tutorial_opened": "Aberto no navegador!",
+        "ui.tutorial_title": "Tutorial",
+        "ui.tutorial_subtitle": "Conheça o básico do servidor."
     },
     "es-ES": {
         "ui.donate": "Donar",
@@ -87,7 +93,10 @@ export const translations: Record<string, Record<string, string>> = {
         "status.downloading": "Descargando",
         "settings.tab.general": "General",
         "settings.tab.mods": "Mods",
-        "settings.mods.empty": "Ningún mod encontrado."
+        "settings.mods.empty": "Ningún mod encontrado.",
+        "ui.tutorial_opened": "¡Abierto en el navegador!",
+        "ui.tutorial_title": "Tutorial",
+        "ui.tutorial_subtitle": "Aprende lo básico del servidor."
     }
 };
 

@@ -6,6 +6,7 @@
   import DonatorsPanel from "./lib/components/DonatorsPanel.svelte";
   import LanguageToggle from "./lib/components/LanguageToggle.svelte";
   import SettingsModal from "./lib/components/SettingsModal.svelte";
+  import TutorialButton from "./lib/components/TutorialButton.svelte";
   import { i18n } from "./lib/stores/i18n.svelte";
   import "./styles/theme.css";
 
@@ -114,6 +115,8 @@
       <div class="panel-area donators-area">
         <DonatorsPanel />
       </div>
+      <!-- Tutorial Button -->
+      <TutorialButton />
     </div>
   </div>
 
