@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Languages } from "lucide-svelte";
+  import { Icons } from "../icons";
   import { i18n } from "../stores/i18n.svelte";
 
   let isOpen = $state(false);
@@ -25,7 +25,7 @@
 
 <div class="lang-container" bind:this={containerRef}>
   <button class="lang-toggle" onclick={toggleMenu} title="Mudar Idioma">
-    <Languages size={20} color="white" />
+    <span class="icon">{@html Icons.Languages}</span>
   </button>
 
   {#if isOpen}
@@ -59,6 +59,18 @@
   .lang-toggle:hover {
     background: var(--color-border);
     transform: scale(1.05);
+  }
+
+  .lang-toggle :global(.icon) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+  }
+
+  .lang-toggle :global(.icon svg) {
+    width: 20px;
+    height: 20px;
   }
 
   .lang-menu {

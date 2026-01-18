@@ -9,6 +9,8 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    minify: 'esbuild',
+    target: 'esnext',
   },
   resolve: {
     conditions: ['browser'],

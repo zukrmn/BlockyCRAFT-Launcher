@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Settings, X, Box, Info } from "lucide-svelte";
+  import { Icons } from "../icons";
   import { i18n } from "../stores/i18n.svelte";
   import { ElectronService } from "../electron";
 
@@ -87,7 +87,7 @@
     onclick={openModal}
     title={i18n.t("ui.settings")}
   >
-    <Settings size={20} color="white" />
+    <span class="icon">{@html Icons.Settings}</span>
   </button>
 
   {#if isOpen}
@@ -98,7 +98,7 @@
         <div class="modal-header">
           <h2>{i18n.t("ui.settings")}</h2>
           <button class="close-btn" onclick={closeModal}>
-            <X size={20} />
+            <span class="icon">{@html Icons.X}</span>
           </button>
         </div>
 
@@ -172,7 +172,7 @@
                     <div class="loading">{i18n.t("status.launching")}</div>
                 {:else if mods.length === 0}
                     <div class="empty-state">
-                        <Box size={48} color="#555" />
+                        <span class="icon-large">{@html Icons.Box}</span>
                         <p>{i18n.t("settings.mods.empty")}</p>
                     </div>
                 {:else}
@@ -306,6 +306,38 @@
   .close-btn:hover {
     color: var(--color-text-main);
     background: rgba(255, 255, 255, 0.1);
+  }
+
+  /* Icon styles for inline SVGs */
+  :global(.icon) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  :global(.icon svg) {
+    width: 20px;
+    height: 20px;
+  }
+
+  :global(.icon-large) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #555;
+  }
+
+  :global(.icon-large svg) {
+    width: 48px;
+    height: 48px;
+  }
+
+  .settings-toggle :global(.icon) {
+    color: white;
+  }
+
+  .close-btn :global(.icon) {
+    color: inherit;
   }
 
   /* Tabs */

@@ -7,6 +7,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(__dirname, '..');
 
 async function buildElectron() {
+  const isProd = process.env.NODE_ENV === 'production' || !process.env.VITE_DEV_SERVER_URL;
+
   // Build main process
   await build({
     entryPoints: [join(projectRoot, 'electron/main.ts')],
@@ -16,7 +18,9 @@ async function buildElectron() {
     outfile: join(projectRoot, 'dist-electron/main.cjs'),
     external: ['electron'],
     format: 'cjs',
-    sourcemap: true,
+    sourcemap: !isProd,
+    minify: isProd,
+    treeShaking: true,
   });
 
   // Build preload script
@@ -28,7 +32,9 @@ async function buildElectron() {
     outfile: join(projectRoot, 'dist-electron/preload.cjs'),
     external: ['electron'],
     format: 'cjs',
-    sourcemap: true,
+    sourcemap: !isProd,
+    minify: isProd,
+    treeShaking: true,
   });
 
   // Build overlay preload script
@@ -40,7 +46,9 @@ async function buildElectron() {
     outfile: join(projectRoot, 'dist-electron/overlay-preload.cjs'),
     external: ['electron'],
     format: 'cjs',
-    sourcemap: true,
+    sourcemap: !isProd,
+    minify: isProd,
+    treeShaking: true,
   });
 
   console.log('✓ Electron files built successfully');
