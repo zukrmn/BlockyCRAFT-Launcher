@@ -92,13 +92,33 @@ export class GameHandler {
     private javaPath: string;
     private javaManager: JavaManager;
     private updateManager: UpdateManager;
-    private gameProcess: any = null; // ChildProcess type but avoiding import issues for now if needed, or better explicit.
+    private gameProcess: any = null;
+
+    // Performance caches
+    private lastUpdateCheck: { result: any; timestamp: number } | null = null;
+    private readonly UPDATE_CACHE_TTL = 60000; // 60 seconds
+    private readonly MANIFEST_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+    private lastInstanceVersion: string | null = null;
 
     constructor() {
         this.gamePath = path.join(app.getPath('userData'), 'gamedata');
         this.javaPath = 'java'; // Will be set by JavaManager
         this.javaManager = new JavaManager();
         this.updateManager = new UpdateManager();
+        // Load last known instance version for remappedJars cache invalidation
+        this.loadLastInstanceVersion();
+    }
+
+    private loadLastInstanceVersion(): void {
+        try {
+            const versionFile = path.join(app.getPath('userData'), 'versions.json');
+            if (fs.existsSync(versionFile)) {
+                const data = JSON.parse(fs.readFileSync(versionFile, 'utf-8'));
+                this.lastInstanceVersion = data.instance || null;
+            }
+        } catch (e) {
+            // Ignore errors
+        }
     }
 
     public init() {
@@ -133,6 +153,49 @@ export class GameHandler {
 
     private sendProgress(sender: Electron.WebContents, status: string, progress: number) {
         sender.send('launch-progress', { status, progress });
+    }
+
+    /**
+     * Fetches version details with 24h local cache to avoid network requests on every launch
+     */
+    private async getCachedVersionDetails(): Promise<any> {
+        const cacheFile = path.join(app.getPath('userData'), 'mojang_version_cache.json');
+
+        // Check cache
+        if (fs.existsSync(cacheFile)) {
+            try {
+                const cached = JSON.parse(fs.readFileSync(cacheFile, 'utf-8'));
+                if (Date.now() - cached.timestamp < this.MANIFEST_CACHE_TTL) {
+                    console.log('[GameHandler] Using cached Mojang version details (TTL: 24h)');
+                    return cached.data;
+                }
+            } catch (e) {
+                console.warn('[GameHandler] Failed to read version cache:', e);
+            }
+        }
+
+        // Fetch fresh
+        console.log('[GameHandler] Fetching fresh Mojang version manifest...');
+        const manifestRes = await fetch(VERSION_MANIFEST_URL);
+        const manifest = await manifestRes.json() as any;
+        const versionData = manifest.versions.find((v: any) => v.id === TARGET_VERSION_ID);
+        if (!versionData) throw new Error(`Version ${TARGET_VERSION_ID} not found`);
+
+        const versionDetailsRes = await fetch(versionData.url);
+        const versionDetails = await versionDetailsRes.json() as any;
+
+        // Save cache
+        try {
+            fs.writeFileSync(cacheFile, JSON.stringify({
+                timestamp: Date.now(),
+                data: versionDetails
+            }));
+            console.log('[GameHandler] Saved version details to cache');
+        } catch (e) {
+            console.warn('[GameHandler] Failed to save version cache:', e);
+        }
+
+        return versionDetails;
     }
 
     private async checkJava(path: string): Promise<boolean> {
@@ -271,20 +334,25 @@ export class GameHandler {
     private async handleLaunch(event: IpcMainInvokeEvent, options: GameOptions) {
         console.log('Requesting game launch...', options);
 
-        // 0. Check for updates first
+        // 0. Check for updates (with 60s cache to avoid duplicate checks)
         this.sendProgress(event.sender, 'Verificando atualizações...', 2);
-        try {
-            const updateResult = await this.updateManager.performAllUpdates((status, percent) => {
-                // Map update progress to 2-15% of total progress
-                const mappedPercent = 2 + (percent / 100) * 13;
-                this.sendProgress(event.sender, status, Math.round(mappedPercent));
-            });
+        const now = Date.now();
+        if (this.lastUpdateCheck && (now - this.lastUpdateCheck.timestamp) < this.UPDATE_CACHE_TTL) {
+            console.log('[GameHandler] Using cached update check result (TTL: 60s)');
+        } else {
+            try {
+                const updateResult = await this.updateManager.performAllUpdates((status, percent) => {
+                    const mappedPercent = 2 + (percent / 100) * 13;
+                    this.sendProgress(event.sender, status, Math.round(mappedPercent));
+                });
+                this.lastUpdateCheck = { result: updateResult, timestamp: now };
 
-            if (!updateResult.success) {
-                console.warn('Update check failed, continuing anyway:', updateResult.error);
+                if (!updateResult.success) {
+                    console.warn('Update check failed, continuing anyway:', updateResult.error);
+                }
+            } catch (e) {
+                console.warn('Update check failed, continuing anyway:', e);
             }
-        } catch (e) {
-            console.warn('Update check failed, continuing anyway:', e);
         }
 
         // 1. Check & Extract Custom Instance
@@ -300,11 +368,17 @@ export class GameHandler {
         // Ensure .minecraft exists (created by zip or we create it)
         if (!fs.existsSync(dotMinecraft)) fs.mkdirSync(dotMinecraft, { recursive: true });
 
-        // FORCE CACHE CLEAR: Delete .fabric/remappedJars to ensure fresh remapping
+        // Clear remappedJars only if instance version changed (speeds up subsequent launches)
+        const currentInstanceVersion = this.lastUpdateCheck?.result?.remoteVersions?.instance?.version;
         const sensitiveCache = path.join(dotMinecraft, '.fabric', 'remappedJars');
-        if (fs.existsSync(sensitiveCache)) {
-            console.log('Clearing remappedJars cache to force fresh map...');
-            fs.rmSync(sensitiveCache, { recursive: true, force: true });
+        if (currentInstanceVersion && currentInstanceVersion !== this.lastInstanceVersion) {
+            if (fs.existsSync(sensitiveCache)) {
+                console.log('[GameHandler] Instance version changed, clearing remappedJars cache...');
+                fs.rmSync(sensitiveCache, { recursive: true, force: true });
+            }
+            this.lastInstanceVersion = currentInstanceVersion;
+        } else {
+            console.log('[GameHandler] Preserving remappedJars cache (same instance version)');
         }
 
         const binDir = path.join(dotMinecraft, 'bin');
@@ -325,15 +399,9 @@ export class GameHandler {
                 throw new Error('Falha ao configurar Java: ' + e.message);
             }
 
-            // Fetch Manifest (Vanilla)
+            // Fetch Manifest (with 24h cache)
             this.sendProgress(event.sender, 'Verificando versão...', 65);
-            const manifestRes = await fetch(VERSION_MANIFEST_URL);
-            const manifest = await manifestRes.json() as any;
-            const versionData = manifest.versions.find((v: any) => v.id === TARGET_VERSION_ID);
-            if (!versionData) throw new Error(`Version ${TARGET_VERSION_ID} not found`);
-
-            const versionDetailsRes = await fetch(versionData.url);
-            const versionDetails = await versionDetailsRes.json() as any;
+            const versionDetails = await this.getCachedVersionDetails();
 
             // Download Minecraft Jar
             const clientUrl = versionDetails.downloads.client.url;
@@ -496,83 +564,96 @@ export class GameHandler {
                         // Download Legacy Fabric Natives (Crucial for LWJGL 2.9.4+legacyfabric.9)
                         this.sendProgress(event.sender, 'Baixando nativos...', 78);
 
-                        // Clear natives folder to ensure fresh extraction (fixes issues with renamed/corrupted files)
-                        if (fs.existsSync(nativesDir)) {
-                            console.log('[GameHandler] Clearing natives folder for fresh extraction...');
-                            fs.rmSync(nativesDir, { recursive: true, force: true });
-                        }
-                        fs.mkdirSync(nativesDir, { recursive: true });
+                        // Check if natives are already complete (skip extraction for faster startup)
+                        const expectedNatives = process.platform === 'linux'
+                            ? ['liblwjgl-linux-amd64.so', 'libopenal-amd64.so', 'libjinput-linux64.so']
+                            : process.platform === 'win32'
+                                ? ['lwjgl64.dll', 'OpenAL64.dll']
+                                : ['liblwjgl.dylib', 'libopenal.dylib'];
 
-                        let classifier = 'natives-linux';
-                        if (process.platform === 'win32') classifier = 'natives-windows';
-                        else if (process.platform === 'darwin') classifier = 'natives-osx';
+                        const nativesComplete = fs.existsSync(nativesDir) &&
+                            expectedNatives.every(f => fs.existsSync(path.join(nativesDir, f)));
 
-                        const nativesList = [
-                            { group: 'org.lwjgl.lwjgl', artifact: 'lwjgl-platform', version: '2.9.4+legacyfabric.9', classifier: classifier },
-                            { group: 'net.java.jinput', artifact: 'jinput-platform', version: '2.0.5', classifier: classifier }
-                        ];
+                        if (nativesComplete) {
+                            console.log('[GameHandler] Natives already present, skipping extraction');
+                        } else {
+                            // Clear and re-extract
+                            if (fs.existsSync(nativesDir)) {
+                                console.log('[GameHandler] Natives incomplete, clearing for fresh extraction...');
+                                fs.rmSync(nativesDir, { recursive: true, force: true });
+                            }
+                            fs.mkdirSync(nativesDir, { recursive: true });
 
-                        for (const native of nativesList) {
-                            const filename = `${native.artifact}-${native.version}-${native.classifier}.jar`;
-                            const pathStr = `${native.group.replace(/\./g, '/')}/${native.artifact}/${native.version}/${filename}`;
-                            const localPath = path.join(librariesDir, filename);
+                            let classifier = 'natives-linux';
+                            if (process.platform === 'win32') classifier = 'natives-windows';
+                            else if (process.platform === 'darwin') classifier = 'natives-osx';
 
-                            // Check if already downloaded
-                            if (fs.existsSync(localPath)) {
-                                console.log(`[Cache] Found native library locally: ${filename}`);
-                                await safeExtractZipWithRetry(localPath, nativesDir);
-                                continue;
+                            const nativesList = [
+                                { group: 'org.lwjgl.lwjgl', artifact: 'lwjgl-platform', version: '2.9.4+legacyfabric.9', classifier: classifier },
+                                { group: 'net.java.jinput', artifact: 'jinput-platform', version: '2.0.5', classifier: classifier }
+                            ];
+
+                            for (const native of nativesList) {
+                                const filename = `${native.artifact}-${native.version}-${native.classifier}.jar`;
+                                const pathStr = `${native.group.replace(/\./g, '/')}/${native.artifact}/${native.version}/${filename}`;
+                                const localPath = path.join(librariesDir, filename);
+
+                                // Check if already downloaded
+                                if (fs.existsSync(localPath)) {
+                                    console.log(`[Cache] Found native library locally: ${filename}`);
+                                    await safeExtractZipWithRetry(localPath, nativesDir);
+                                    continue;
+                                }
+
+                                // 2. Download if missing
+                                let url = legacyFabricRepo + pathStr;
+                                if (native.group === 'net.java.jinput') {
+                                    url = mavenCentral + pathStr;
+                                }
+
+                                // Download to temp
+                                const tempPath = await this.downloadFile(url, path.join(gameRoot, 'temp_natives'), filename, event.sender);
+
+                                // Extract to nativesDir
+                                await safeExtractZipWithRetry(tempPath, nativesDir);
                             }
 
-                            // 2. Download if missing
-                            let url = legacyFabricRepo + pathStr;
-                            if (native.group === 'net.java.jinput') {
-                                url = mavenCentral + pathStr;
-                            }
-
-                            // Download to temp
-                            const tempPath = await this.downloadFile(url, path.join(gameRoot, 'temp_natives'), filename, event.sender);
-
-                            // Extract to nativesDir
-                            await safeExtractZipWithRetry(tempPath, nativesDir);
-                        }
-
-                        // FIX: macOS .jnilib to .dylib renaming (Prism behavior)
-                        if (process.platform === 'darwin') {
-                            try {
-                                const files = fs.readdirSync(nativesDir);
-                                for (const file of files) {
-                                    if (file.endsWith('.jnilib')) {
-                                        const oldPath = path.join(nativesDir, file);
-                                        const newPath = path.join(nativesDir, file.replace('.jnilib', '.dylib'));
-                                        if (fs.existsSync(oldPath)) {
-                                            console.log(`[GameHandler] Renaming ${file} to .dylib`);
-                                            try {
-                                                if (fs.existsSync(newPath)) fs.unlinkSync(newPath);
-                                                fs.renameSync(oldPath, newPath);
-                                            } catch (renameErr) {
-                                                console.warn(`[GameHandler] Failed to rename ${file}:`, renameErr);
+                            // FIX: macOS .jnilib to .dylib renaming (Prism behavior)
+                            if (process.platform === 'darwin') {
+                                try {
+                                    const files = fs.readdirSync(nativesDir);
+                                    for (const file of files) {
+                                        if (file.endsWith('.jnilib')) {
+                                            const oldPath = path.join(nativesDir, file);
+                                            const newPath = path.join(nativesDir, file.replace('.jnilib', '.dylib'));
+                                            if (fs.existsSync(oldPath)) {
+                                                console.log(`[GameHandler] Renaming ${file} to .dylib`);
+                                                try {
+                                                    if (fs.existsSync(newPath)) fs.unlinkSync(newPath);
+                                                    fs.renameSync(oldPath, newPath);
+                                                } catch (renameErr) {
+                                                    console.warn(`[GameHandler] Failed to rename ${file}:`, renameErr);
+                                                }
                                             }
                                         }
                                     }
+                                } catch (e) {
+                                    console.warn('[GameHandler] Failed to process macOS natives:', e);
                                 }
-                            } catch (e) {
-                                console.warn('[GameHandler] Failed to process macOS natives:', e);
                             }
-                        }
 
-                        // NOTE: PrismLauncher works with the original OpenAL-amd64.dll files
-                        // No need to download or rename. The fix is in using forward slashes
-                        // in java.library.path and NOT using -Dorg.lwjgl.librarypath/openal.libname
+                            // NOTE: PrismLauncher works with the original OpenAL-amd64.dll files
+                            // No need to download or rename. The fix is in using forward slashes
+                            // in java.library.path and NOT using -Dorg.lwjgl.librarypath/openal.libname
 
-                        // Log the contents of natives folder for debugging
-                        try {
-                            const nativesContents = fs.readdirSync(nativesDir);
-                            console.log(`[GameHandler] Natives folder contents (${nativesDir}):`, nativesContents);
-                        } catch (e) {
-                            console.error('[GameHandler] Failed to read natives folder:', e);
-                        }
-
+                            // Log the contents of natives folder for debugging
+                            try {
+                                const nativesContents = fs.readdirSync(nativesDir);
+                                console.log(`[GameHandler] Natives folder contents (${nativesDir}):`, nativesContents);
+                            } catch (e) {
+                                console.error('[GameHandler] Failed to read natives folder:', e);
+                            }
+                        } // End of else block for natives
 
                         // Download Fabric Loader (0.16.7)
                         const loaderUrl = 'https://maven.fabricmc.net/net/fabricmc/fabric-loader/0.16.7/fabric-loader-0.16.7.jar';
