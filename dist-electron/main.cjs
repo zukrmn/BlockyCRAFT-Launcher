@@ -4332,29 +4332,44 @@ var OverlayHandler = class {
   /**
    * Register the Shift+Tab global hotkey
    */
+  registeredHotkey = null;
+  HOTKEY_CANDIDATES = ["Shift+Tab", "F6", "CommandOrControl+Tab"];
+  /**
+   * Register global hotkey with fallback support
+   */
   registerHotkey() {
-    try {
-      const registered = import_electron6.globalShortcut.register("Shift+Tab", () => {
-        Logger.info("OverlayHandler", "Shift+Tab pressed");
-        this.toggleOverlay();
-      });
-      if (registered) {
-        this.hotkeyRegistered = true;
-        Logger.info("OverlayHandler", "Shift+Tab hotkey registered successfully");
-      } else {
-        Logger.error("OverlayHandler", "Failed to register Shift+Tab hotkey");
+    for (const key of this.HOTKEY_CANDIDATES) {
+      try {
+        if (import_electron6.globalShortcut.isRegistered(key)) {
+          Logger.info("OverlayHandler", `Hotkey ${key} is already registered by another application`);
+          continue;
+        }
+        const registered = import_electron6.globalShortcut.register(key, () => {
+          Logger.info("OverlayHandler", `${key} pressed`);
+          this.toggleOverlay();
+        });
+        if (registered) {
+          this.registeredHotkey = key;
+          this.hotkeyRegistered = true;
+          Logger.info("OverlayHandler", `Overlay hotkey registered successfully: ${key}`);
+          return;
+        } else {
+          Logger.warn("OverlayHandler", `Failed to register hotkey user candidate: ${key}`);
+        }
+      } catch (e) {
+        Logger.error("OverlayHandler", `Exception registering ${key}: ${e.message}`);
       }
-    } catch (e) {
-      Logger.error("OverlayHandler", `Failed to register hotkey: ${e.message}`);
     }
+    Logger.error("OverlayHandler", "Failed to register ANY overlay hotkey. Overlay will not be accessible.");
   }
   /**
    * Unregister all shortcuts - call on app quit
    */
   cleanup() {
-    if (this.hotkeyRegistered) {
-      import_electron6.globalShortcut.unregister("Shift+Tab");
+    if (this.hotkeyRegistered && this.registeredHotkey) {
+      import_electron6.globalShortcut.unregister(this.registeredHotkey);
       this.hotkeyRegistered = false;
+      this.registeredHotkey = null;
       Logger.info("OverlayHandler", "Hotkey unregistered");
     }
     if (this.overlayWindow && !this.overlayWindow.isDestroyed()) {
