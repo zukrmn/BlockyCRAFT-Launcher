@@ -4699,7 +4699,11 @@ function createWindow() {
     console.error("Create Window: unresponsive");
   });
   mainWindow.on("closed", () => {
+    if (overlayHandler) {
+      overlayHandler.cleanup();
+    }
     mainWindow = null;
+    import_electron7.app.quit();
   });
 }
 import_electron7.app.whenReady().then(() => {

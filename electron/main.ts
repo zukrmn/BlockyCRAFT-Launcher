@@ -113,7 +113,11 @@ function createWindow(): void {
     });
 
     mainWindow.on('closed', () => {
+        if (overlayHandler) {
+            overlayHandler.cleanup();
+        }
         mainWindow = null;
+        app.quit();
     });
 }
 
