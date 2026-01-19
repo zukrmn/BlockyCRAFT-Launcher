@@ -30,7 +30,11 @@ export const translations: Record<string, Record<string, string>> = {
         "settings.mods.empty": "No mods found.",
         "ui.tutorial_opened": "Opened in browser!",
         "ui.tutorial_title": "Tutorial",
-        "ui.tutorial_subtitle": "Learn the server basics."
+        "ui.tutorial_subtitle": "Learn the server basics.",
+        "settings.tab.overlay": "Overlay",
+        "settings.overlay.hotkey": "Hotkey",
+        "settings.overlay.hotkey_hint": "Press this key during gameplay to open the overlay.",
+        "settings.overlay.hotkey_failed": "Failed to register hotkey. It may be in use by another application."
     },
     "pt-BR": {
         "ui.donate": "Doar",
@@ -63,7 +67,11 @@ export const translations: Record<string, Record<string, string>> = {
         "settings.mods.empty": "Nenhum mod encontrado.",
         "ui.tutorial_opened": "Aberto no navegador!",
         "ui.tutorial_title": "Tutorial",
-        "ui.tutorial_subtitle": "Conheça o básico do servidor."
+        "ui.tutorial_subtitle": "Conheça o básico do servidor.",
+        "settings.tab.overlay": "Overlay",
+        "settings.overlay.hotkey": "Tecla de Atalho",
+        "settings.overlay.hotkey_hint": "Pressione esta tecla durante o jogo para abrir o overlay.",
+        "settings.overlay.hotkey_failed": "Falha ao registrar atalho. Pode estar em uso por outro aplicativo."
     },
     "es-ES": {
         "ui.donate": "Donar",
@@ -96,7 +104,11 @@ export const translations: Record<string, Record<string, string>> = {
         "settings.mods.empty": "Ningún mod encontrado.",
         "ui.tutorial_opened": "¡Abierto en el navegador!",
         "ui.tutorial_title": "Tutorial",
-        "ui.tutorial_subtitle": "Aprende lo básico del servidor."
+        "ui.tutorial_subtitle": "Aprende lo básico del servidor.",
+        "settings.tab.overlay": "Overlay",
+        "settings.overlay.hotkey": "Atajo de Teclado",
+        "settings.overlay.hotkey_hint": "Presiona esta tecla durante el juego para abrir el overlay.",
+        "settings.overlay.hotkey_failed": "Error al registrar atajo. Puede estar en uso por otra aplicación."
     }
 };
 

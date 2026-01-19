@@ -10,6 +10,12 @@
   let mods = $state<any[]>([]);
   let isLoadingMods = $state(false);
 
+  // Overlay hotkey state
+  let currentHotkey = $state("");
+  let availableHotkeys = $state<string[]>([]);
+  let hotkeyError = $state("");
+  let isLoadingOverlay = $state(false);
+
   // Load settings from localStorage
   let minMemory = $state(localStorage.getItem("settings.minMemory") || "512");
   let maxMemory = $state(localStorage.getItem("settings.maxMemory") || "2048");
@@ -17,8 +23,10 @@
 
   function openModal() {
     isOpen = true;
-    if (activeTab === "mods") {
-        loadMods();
+    // Always load mods to show correct count in tab
+    loadMods();
+    if (activeTab === "overlay") {
+        loadOverlaySettings();
     }
   }
 
@@ -57,8 +65,36 @@
 
   function switchTab(tab: string) {
     activeTab = tab;
-    if (tab === "mods") {
-        loadMods();
+    if (tab === "overlay") {
+        loadOverlaySettings();
+    }
+  }
+
+  async function loadOverlaySettings() {
+    isLoadingOverlay = true;
+    hotkeyError = "";
+    try {
+        const [hotkey, hotkeys] = await Promise.all([
+            ElectronService.getOverlayHotkey(),
+            ElectronService.getAvailableHotkeys()
+        ]);
+        currentHotkey = hotkey;
+        availableHotkeys = hotkeys;
+    } catch (e) {
+        console.error("Failed to load overlay settings:", e);
+    } finally {
+        isLoadingOverlay = false;
+    }
+  }
+
+  async function selectHotkey(hotkey: string) {
+    hotkeyError = "";
+    
+    const result = await ElectronService.setOverlayHotkey(hotkey);
+    if (result.success) {
+        currentHotkey = hotkey;
+    } else {
+        hotkeyError = result.error || i18n.t("settings.overlay.hotkey_failed");
     }
   }
 
@@ -118,6 +154,13 @@
             >
                 {i18n.t("settings.tab.mods")} 
                 <span class="mod-count">{enabledModsCount}/{totalModsCount}</span>
+            </button>
+            <button 
+                class="tab-btn" 
+                class:active={activeTab === 'overlay'} 
+                onclick={() => switchTab('overlay')}
+            >
+                {i18n.t("settings.tab.overlay")}
             </button>
         </div>
 
@@ -201,6 +244,36 @@
                         </div>
                     {/each}
                 {/if}
+            </div>
+          {:else if activeTab === 'overlay'}
+            <div class="overlay-settings">
+              {#if isLoadingOverlay}
+                <div class="loading">{i18n.t("status.launching")}</div>
+              {:else}
+                <div class="setting-group">
+                  <label>{i18n.t("settings.overlay.hotkey")}</label>
+                  <div class="hotkey-options">
+                    {#each availableHotkeys as hotkey}
+                      <button 
+                        class="hotkey-option" 
+                        class:selected={currentHotkey === hotkey}
+                        onclick={() => selectHotkey(hotkey)}
+                      >
+                        {#if hotkey === 'CommandOrControl+Tab'}
+                          <span class="hotkey-icon">{@html Icons.Command}</span>
+                          <span>/ Ctrl + Tab</span>
+                        {:else}
+                          <span>{hotkey.replace('+', ' + ')}</span>
+                        {/if}
+                      </button>
+                    {/each}
+                  </div>
+                  <span class="hint">{i18n.t("settings.overlay.hotkey_hint")}</span>
+                  {#if hotkeyError}
+                    <span class="error-msg">{hotkeyError}</span>
+                  {/if}
+                </div>
+              {/if}
             </div>
           {/if}
         </div>
@@ -598,5 +671,60 @@
 
   .btn-save:hover {
     filter: brightness(0.9);
+  }
+
+  /* Overlay settings styles */
+  .overlay-settings {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+
+  /* Hotkey option buttons */
+  .hotkey-options {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .hotkey-option {
+    background: var(--color-bg-input);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 10px 16px;
+    color: var(--color-text-main);
+    font-size: 0.95rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .hotkey-option:hover {
+    border-color: var(--color-border-hover);
+    background: rgba(255,255,255,0.05);
+  }
+
+  .hotkey-option.selected {
+    border-color: white;
+    background: rgba(255,255,255,0.1);
+  }
+
+  .hotkey-icon {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .hotkey-icon :global(svg) {
+    width: 16px;
+    height: 16px;
+  }
+
+  .error-msg {
+    font-size: 0.8rem;
+    color: #ef4444;
+    margin-top: 4px;
   }
 </style>

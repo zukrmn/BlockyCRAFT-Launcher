@@ -110,5 +110,24 @@ export const ElectronService = {
     async fetchUrl(url: string): Promise<{ success: boolean; data?: string; error?: string }> {
         if (!electron) return { success: false, error: 'Electron not available' };
         return electron.invoke('fetch-url', url) as Promise<{ success: boolean; data?: string; error?: string }>;
+    },
+
+    getPlatform(): string {
+        return electron?.platform || 'unknown';
+    },
+
+    async getOverlayHotkey(): Promise<string> {
+        if (!electron) return 'F6';
+        return electron.invoke('get-overlay-hotkey', null) as Promise<string>;
+    },
+
+    async setOverlayHotkey(key: string): Promise<{ success: boolean; error?: string }> {
+        if (!electron) return { success: false, error: 'Electron not available' };
+        return electron.invoke('set-overlay-hotkey', key) as Promise<{ success: boolean; error?: string }>;
+    },
+
+    async getAvailableHotkeys(): Promise<string[]> {
+        if (!electron) return ['F6', 'Shift+Tab', 'CommandOrControl+Tab'];
+        return electron.invoke('get-available-hotkeys', null) as Promise<string[]>;
     }
 };

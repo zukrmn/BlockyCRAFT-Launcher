@@ -1,6 +1,10 @@
-import { BrowserWindow, BrowserView, globalShortcut, screen, ipcMain } from 'electron';
+import { BrowserWindow, BrowserView, globalShortcut, screen, ipcMain, app } from 'electron';
 import { Logger } from './Logger.js';
 import path from 'path';
+import fs from 'fs';
+
+// Available hotkeys for user selection
+const AVAILABLE_HOTKEYS = ['F6', 'Shift+Tab', 'CommandOrControl+Tab'];
 
 /**
  * Handles the in-game browser overlay functionality.
@@ -12,6 +16,7 @@ export class OverlayHandler {
     private isVisible: boolean = false;
     private isGameRunning: boolean = false;
     private hotkeyRegistered: boolean = false;
+    private configPath: string = '';
 
     private readonly OVERLAY_URL = 'https://craft.blocky.com.br';
     private readonly HEADER_HEIGHT = 48;
@@ -22,6 +27,7 @@ export class OverlayHandler {
      */
     public init(): void {
         Logger.info('OverlayHandler', 'Initializing overlay handler');
+        this.configPath = path.join(app.getPath('userData'), 'overlay-config.json');
         this.registerHotkey();
         this.setupIPC();
     }
@@ -50,44 +56,135 @@ export class OverlayHandler {
             this.hideOverlay();
             Logger.info('OverlayHandler', 'Closed via IPC');
         });
+
+        // Hotkey configuration IPC handlers
+        ipcMain.handle('get-overlay-hotkey', () => this.getHotkey());
+        ipcMain.handle('set-overlay-hotkey', (_, key: string) => this.setHotkey(key));
+        ipcMain.handle('get-available-hotkeys', () => this.getAvailableHotkeys());
     }
 
     /**
-     * Register the Shift+Tab global hotkey
+     * Currently registered hotkey
      */
     private registeredHotkey: string | null = null;
-    private readonly HOTKEY_CANDIDATES = ['Shift+Tab', 'F6', 'CommandOrControl+Tab'];
 
     /**
-     * Register global hotkey with fallback support
+     * Get platform-specific default hotkey
+     */
+    private getDefaultHotkey(): string {
+        // Linux has issues with Shift+Tab in many window managers
+        return process.platform === 'linux' ? 'F6' : 'Shift+Tab';
+    }
+
+    /**
+     * Load saved hotkey from config file
+     */
+    private loadSavedHotkey(): string {
+        try {
+            if (fs.existsSync(this.configPath)) {
+                const config = JSON.parse(fs.readFileSync(this.configPath, 'utf-8'));
+                if (config.hotkey && AVAILABLE_HOTKEYS.includes(config.hotkey)) {
+                    return config.hotkey;
+                }
+            }
+        } catch (e) {
+            Logger.warn('OverlayHandler', 'Failed to load hotkey config, using default');
+        }
+        return this.getDefaultHotkey();
+    }
+
+    /**
+     * Save hotkey to config file
+     */
+    private saveHotkeyConfig(hotkey: string): void {
+        try {
+            fs.writeFileSync(this.configPath, JSON.stringify({ hotkey }, null, 2));
+            Logger.info('OverlayHandler', `Saved hotkey config: ${hotkey}`);
+        } catch (e) {
+            Logger.error('OverlayHandler', 'Failed to save hotkey config');
+        }
+    }
+
+    /**
+     * Register the configured hotkey
      */
     private registerHotkey(): void {
-        for (const key of this.HOTKEY_CANDIDATES) {
-            try {
-                if (globalShortcut.isRegistered(key)) {
-                    Logger.info('OverlayHandler', `Hotkey ${key} is already registered by another application`);
-                    continue;
-                }
+        const targetKey = this.loadSavedHotkey();
+        this.tryRegisterHotkey(targetKey);
+    }
 
-                const registered = globalShortcut.register(key, () => {
-                    Logger.info('OverlayHandler', `${key} pressed`);
-                    this.toggleOverlay();
-                });
-
-                if (registered) {
-                    this.registeredHotkey = key;
-                    this.hotkeyRegistered = true;
-                    Logger.info('OverlayHandler', `Overlay hotkey registered successfully: ${key}`);
-                    return; // Success, stop trying
-                } else {
-                    Logger.warn('OverlayHandler', `Failed to register hotkey user candidate: ${key}`);
-                }
-            } catch (e: any) {
-                Logger.error('OverlayHandler', `Exception registering ${key}: ${e.message}`);
+    /**
+     * Attempt to register a specific hotkey
+     */
+    private tryRegisterHotkey(key: string): boolean {
+        try {
+            if (globalShortcut.isRegistered(key)) {
+                Logger.warn('OverlayHandler', `Hotkey ${key} is already registered by another application`);
+                return false;
             }
+
+            const registered = globalShortcut.register(key, () => {
+                Logger.info('OverlayHandler', `${key} pressed`);
+                this.toggleOverlay();
+            });
+
+            if (registered) {
+                this.registeredHotkey = key;
+                this.hotkeyRegistered = true;
+                Logger.info('OverlayHandler', `Overlay hotkey registered: ${key}`);
+                return true;
+            } else {
+                Logger.warn('OverlayHandler', `Failed to register hotkey: ${key}`);
+                return false;
+            }
+        } catch (e: any) {
+            Logger.error('OverlayHandler', `Exception registering ${key}: ${e.message}`);
+            return false;
+        }
+    }
+
+    /**
+     * Get currently active hotkey
+     */
+    public getHotkey(): string {
+        return this.registeredHotkey || this.getDefaultHotkey();
+    }
+
+    /**
+     * Set a new hotkey (unregister old, register new, persist)
+     */
+    public setHotkey(key: string): { success: boolean; error?: string } {
+        // Validate key is in available list
+        if (!AVAILABLE_HOTKEYS.includes(key)) {
+            return { success: false, error: `Invalid hotkey: ${key}` };
         }
 
-        Logger.error('OverlayHandler', 'Failed to register ANY overlay hotkey. Overlay will not be accessible.');
+        // Unregister current hotkey
+        if (this.registeredHotkey && this.hotkeyRegistered) {
+            globalShortcut.unregister(this.registeredHotkey);
+            this.hotkeyRegistered = false;
+            this.registeredHotkey = null;
+        }
+
+        // Register new hotkey
+        if (this.tryRegisterHotkey(key)) {
+            this.saveHotkeyConfig(key);
+            return { success: true };
+        } else {
+            // Rollback: try to re-register the default
+            const fallback = this.getDefaultHotkey();
+            if (fallback !== key) {
+                this.tryRegisterHotkey(fallback);
+            }
+            return { success: false, error: `Failed to register hotkey: ${key}. It may be in use by another application.` };
+        }
+    }
+
+    /**
+     * Get list of available hotkeys for UI
+     */
+    public getAvailableHotkeys(): string[] {
+        return [...AVAILABLE_HOTKEYS];
     }
 
     /**
