@@ -1,4 +1,4 @@
-import { app, ipcMain, IpcMainInvokeEvent } from 'electron';
+import { app, ipcMain, IpcMainInvokeEvent, screen } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { spawn, exec } from 'child_process';
@@ -78,6 +78,7 @@ interface GameSettings {
     minMemory: string;
     maxMemory: string;
     javaArgs: string;
+    borderlessMode?: boolean;
 }
 
 interface GameOptions {
@@ -774,6 +775,12 @@ export class GameHandler {
                 launchArgs.push(...customArgsArray);
             }
 
+            // Borderless window mode (experimental) - removes window decorations for overlay compatibility
+            if (options.settings?.borderlessMode) {
+                console.log('[GameHandler] Borderless mode enabled - adding LWJGL undecorated flag');
+                launchArgs.push('-Dorg.lwjgl.opengl.Window.undecorated=true');
+            }
+
             // Add classpath and main class
             launchArgs.push('-cp', classpath.join(path.delimiter));
             launchArgs.push(mainClass);
@@ -787,6 +794,22 @@ export class GameHandler {
                 launchArgs.push('--assetIndex', 'truly_legacy'); // Babric often uses 'truly_legacy' or 'legacy'?
                 // Actually, standard b1.7.3 uses 'legacy' assets, but Fabric might want an index argument.
                 // Let's guess 'legacy' for now.
+            }
+
+            // Borderless mode: set window size to screen dimensions for pseudo-fullscreen
+            if (options.settings?.borderlessMode) {
+                try {
+                    const primaryDisplay = screen.getPrimaryDisplay();
+                    const { width, height } = primaryDisplay.size;
+                    console.log(`[GameHandler] Borderless mode: setting window size to ${width}x${height}`);
+                    launchArgs.push('--width', width.toString());
+                    launchArgs.push('--height', height.toString());
+                } catch (e) {
+                    console.warn('[GameHandler] Failed to get screen size for borderless mode:', e);
+                    // Fallback to common resolution
+                    launchArgs.push('--width', '1920');
+                    launchArgs.push('--height', '1080');
+                }
             }
 
             // Auto-connect to BlockyCRAFT server

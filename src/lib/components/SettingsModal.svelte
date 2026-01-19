@@ -20,6 +20,7 @@
   let minMemory = $state(localStorage.getItem("settings.minMemory") || "512");
   let maxMemory = $state(localStorage.getItem("settings.maxMemory") || "2048");
   let javaArgs = $state(localStorage.getItem("settings.javaArgs") || "");
+  let borderlessMode = $state(localStorage.getItem("settings.borderlessMode") === "true");
 
   function openModal() {
     isOpen = true;
@@ -38,6 +39,7 @@
     localStorage.setItem("settings.minMemory", minMemory);
     localStorage.setItem("settings.maxMemory", maxMemory);
     localStorage.setItem("settings.javaArgs", javaArgs);
+    localStorage.setItem("settings.borderlessMode", borderlessMode.toString());
     closeModal();
   }
 
@@ -272,6 +274,23 @@
                   {#if hotkeyError}
                     <span class="error-msg">{hotkeyError}</span>
                   {/if}
+                </div>
+                
+                <!-- Borderless Window Mode -->
+                <div class="setting-group borderless-setting">
+                  <div class="setting-row">
+                    <div class="setting-label-group">
+                      <label>{i18n.t("settings.overlay.borderless")}</label>
+                      <span class="experimental-badge">{i18n.t("settings.overlay.experimental")}</span>
+                    </div>
+                    <input 
+                      type="checkbox" 
+                      checked={borderlessMode} 
+                      onchange={() => { borderlessMode = !borderlessMode; localStorage.setItem("settings.borderlessMode", borderlessMode.toString()); }}
+                      class="toggle-switch"
+                    />
+                  </div>
+                  <span class="hint">{i18n.t("settings.overlay.borderless_hint")}</span>
                 </div>
               {/if}
             </div>
@@ -726,5 +745,36 @@
     font-size: 0.8rem;
     color: #ef4444;
     margin-top: 4px;
+  }
+
+  /* Borderless setting styles */
+  .borderless-setting {
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--spacing-md);
+  }
+
+  .setting-label-group {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+
+  .experimental-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
   }
 </style>

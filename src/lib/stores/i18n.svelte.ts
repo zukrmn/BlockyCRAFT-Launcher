@@ -34,7 +34,10 @@ export const translations: Record<string, Record<string, string>> = {
         "settings.tab.overlay": "Overlay",
         "settings.overlay.hotkey": "Hotkey",
         "settings.overlay.hotkey_hint": "Press this key during gameplay to open the overlay.",
-        "settings.overlay.hotkey_failed": "Failed to register hotkey. It may be in use by another application."
+        "settings.overlay.hotkey_failed": "Failed to register hotkey. It may be in use by another application.",
+        "settings.overlay.borderless": "Borderless Window",
+        "settings.overlay.borderless_hint": "Experimental: Launches the game in a borderless window for better overlay compatibility.",
+        "settings.overlay.experimental": "Experimental"
     },
     "pt-BR": {
         "ui.donate": "Doar",
@@ -71,7 +74,10 @@ export const translations: Record<string, Record<string, string>> = {
         "settings.tab.overlay": "Overlay",
         "settings.overlay.hotkey": "Tecla de Atalho",
         "settings.overlay.hotkey_hint": "Pressione esta tecla durante o jogo para abrir o overlay.",
-        "settings.overlay.hotkey_failed": "Falha ao registrar atalho. Pode estar em uso por outro aplicativo."
+        "settings.overlay.hotkey_failed": "Falha ao registrar atalho. Pode estar em uso por outro aplicativo.",
+        "settings.overlay.borderless": "Janela Sem Bordas",
+        "settings.overlay.borderless_hint": "Experimental: Inicia o jogo em uma janela sem bordas para melhor compatibilidade com o overlay.",
+        "settings.overlay.experimental": "Experimental"
     },
     "es-ES": {
         "ui.donate": "Donar",
@@ -108,7 +114,10 @@ export const translations: Record<string, Record<string, string>> = {
         "settings.tab.overlay": "Overlay",
         "settings.overlay.hotkey": "Atajo de Teclado",
         "settings.overlay.hotkey_hint": "Presiona esta tecla durante el juego para abrir el overlay.",
-        "settings.overlay.hotkey_failed": "Error al registrar atajo. Puede estar en uso por otra aplicación."
+        "settings.overlay.hotkey_failed": "Error al registrar atajo. Puede estar en uso por otra aplicación.",
+        "settings.overlay.borderless": "Ventana Sin Bordes",
+        "settings.overlay.borderless_hint": "Experimental: Inicia el juego en una ventana sin bordes para mejor compatibilidad con el overlay.",
+        "settings.overlay.experimental": "Experimental"
     }
 };
 

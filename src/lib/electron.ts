@@ -17,7 +17,8 @@ export const ElectronService = {
         const settings = {
             minMemory: localStorage.getItem("settings.minMemory") || "512",
             maxMemory: localStorage.getItem("settings.maxMemory") || "2048",
-            javaArgs: localStorage.getItem("settings.javaArgs") || ""
+            javaArgs: localStorage.getItem("settings.javaArgs") || "",
+            borderlessMode: localStorage.getItem("settings.borderlessMode") === "true"
         };
 
         if (!electron) {
