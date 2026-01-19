@@ -327,7 +327,7 @@
 
           <!-- Panel Controls -->
            <div class="setting-section">
-              <h3>Panels (Changelog & Donators)</h3>
+              <h3>{i18n.t("appearance.panels")}</h3>
                <div class="slider-group">
                  <div class="slider-row">
                     <label>{i18n.t("appearance.panel_opacity")}</label>

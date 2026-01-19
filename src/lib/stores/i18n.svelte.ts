@@ -57,7 +57,8 @@ export const translations: Record<string, Record<string, string>> = {
         "appearance.panel_opacity": "Panel Opacity",
         "appearance.panel_blur": "Panel Blur",
         "appearance.reset": "Reset to Defaults",
-        "appearance.reset_confirm": "Reset all appearance settings?"
+        "appearance.reset_confirm": "Reset all appearance settings?",
+        "appearance.panels": "Panels (Changelog & Donators)"
     },
     "pt-BR": {
         "ui.donate": "Doar",
@@ -117,7 +118,8 @@ export const translations: Record<string, Record<string, string>> = {
         "appearance.panel_opacity": "Opacidade dos Painéis",
         "appearance.panel_blur": "Desfoque dos Painéis",
         "appearance.reset": "Restaurar Padrões",
-        "appearance.reset_confirm": "Restaurar todas as configurações de aparência?"
+        "appearance.reset_confirm": "Restaurar todas as configurações de aparência?",
+        "appearance.panels": "Painéis (Novidades & Apoiadores)"
     },
     "es-ES": {
         "ui.donate": "Donar",
@@ -177,7 +179,8 @@ export const translations: Record<string, Record<string, string>> = {
         "appearance.panel_opacity": "Opacidad de Paneles",
         "appearance.panel_blur": "Desenfoque de Paneles",
         "appearance.reset": "Restaurar Valores",
-        "appearance.reset_confirm": "¿Restaurar todas las configuraciones de apariencia?"
+        "appearance.reset_confirm": "¿Restaurar todas las configuraciones de apariencia?",
+        "appearance.panels": "Paneles (Novedades & Apoyadores)"
     }
 };
 
