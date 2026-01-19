@@ -175,12 +175,14 @@
     margin: 0 auto;
     width: 200px; /* Fixed smaller width */
     display: flex;
+    position: relative;
+    z-index: 10;
   }
 
   input {
     width: 100%;
     background: transparent;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-primary);
     border-radius: var(--radius-md);
     color: white;
     padding: 0 var(--spacing-md);

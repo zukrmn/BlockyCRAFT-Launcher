@@ -7,6 +7,7 @@
   import LanguageToggle from "./lib/components/LanguageToggle.svelte";
   import SettingsModal from "./lib/components/SettingsModal.svelte";
   import TutorialButton from "./lib/components/TutorialButton.svelte";
+  import AppearanceModal from "./lib/components/AppearanceModal.svelte";
   import { i18n } from "./lib/stores/i18n.svelte";
   import "./styles/theme.css";
 
@@ -18,6 +19,7 @@
   let launchStatus = $state("");
   let launchProgress = $state(0);
   let maxProgress = $state(0); // Never decreases - ensures bar doesn't go backwards
+  let appearanceModalRef: AppearanceModal;
 
 
   // Map backend status messages (in Portuguese) to i18n keys
@@ -64,6 +66,11 @@
 
     // Check for updates silently in background (optional, feature preserved)
     ElectronService.checkForUpdates();
+    
+    // Apply saved appearance settings
+    if (appearanceModalRef) {
+      appearanceModalRef.initAppearance();
+    }
   });
 
   async function handleLaunch() {
@@ -109,6 +116,7 @@
     <!-- Right: Donators + Language -->
     <div class="right-column">
       <div class="lang-area">
+        <AppearanceModal bind:this={appearanceModalRef} />
         <LanguageToggle />
         <SettingsModal />
       </div>
@@ -189,7 +197,7 @@
   .footer-bar {
     position: relative;
     padding-top: var(--spacing-md);
-    border-top: 1px solid var(--color-border);
+    border-top: 1px solid var(--color-primary);
     margin-left: calc(-1 * var(--spacing-lg));
     margin-right: calc(-1 * var(--spacing-lg));
     padding-left: var(--spacing-lg);

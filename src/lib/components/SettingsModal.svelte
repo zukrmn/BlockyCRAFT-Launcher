@@ -325,7 +325,7 @@
 
   .settings-toggle {
     background: var(--color-bg-card);
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-primary);
     border-radius: 50%;
     width: 40px;
     height: 40px;
@@ -462,7 +462,7 @@
 
   .tab-btn.active {
     color: var(--color-text-main);
-    border-bottom-color: white;
+    border-bottom-color: var(--color-primary);
   }
 
   .mod-count {

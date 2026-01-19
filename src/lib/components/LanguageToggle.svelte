@@ -45,7 +45,7 @@
 
   .lang-toggle {
     background: var(--color-bg-card);
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-primary);
     border-radius: 50%;
     width: 40px;
     height: 40px;

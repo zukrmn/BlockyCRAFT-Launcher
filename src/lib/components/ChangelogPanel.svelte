@@ -75,8 +75,10 @@
 
 <style>
   .changelog-panel {
-    background: var(--color-bg-card);
-    border: 1px solid var(--color-border);
+    background: rgba(30, 30, 30, var(--panel-opacity));
+    backdrop-filter: blur(var(--panel-blur));
+    -webkit-backdrop-filter: blur(var(--panel-blur));
+    border: 1px solid var(--color-primary);
     border-radius: var(--radius-lg);
     padding: var(--spacing-lg);
     height: 100%;
@@ -85,6 +87,7 @@
     flex-direction: column;
   }
   
+
   h2 {
     margin: 0 0 var(--spacing-md) 0;
     font-size: 1rem;
