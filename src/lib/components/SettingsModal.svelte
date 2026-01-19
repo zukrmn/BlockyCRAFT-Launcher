@@ -462,7 +462,7 @@
 
   .tab-btn.active {
     color: var(--color-text-main);
-    border-bottom-color: var(--color-primary);
+    border-bottom-color: white;
   }
 
   .mod-count {
