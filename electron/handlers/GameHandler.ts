@@ -208,6 +208,99 @@ export class GameHandler {
         }
     }
 
+    /**
+     * Applies borderless fullscreen mode to the game window after it spawns.
+     * Uses platform-specific methods to manipulate the window.
+     */
+    private async applyBorderlessPostSpawn(): Promise<void> {
+        const { width, height } = screen.getPrimaryDisplay().size;
+
+        // Wait for the game window to fully initialize
+        await new Promise(resolve => setTimeout(resolve, 4000));
+
+        try {
+            if (process.platform === 'win32') {
+                // Windows: Use PowerShell with inline C# to call Win32 APIs
+                const psScript = `
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class Win32 {
+    [DllImport("user32.dll")] public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+    [DllImport("user32.dll")] public static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+    [DllImport("user32.dll")] public static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+    [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+}
+"@
+$titles = @("Minecraft", "Minecraft Beta 1.7.3")
+$h = [IntPtr]::Zero
+foreach ($t in $titles) {
+    $h = [Win32]::FindWindow([NullString]::Value, $t)
+    if ($h -ne [IntPtr]::Zero) { break }
+}
+if ($h -eq [IntPtr]::Zero) {
+    Get-Process java* | ForEach-Object { 
+        if ($_.MainWindowTitle -like "*Minecraft*") { $h = $_.MainWindowHandle }
+    }
+}
+if ($h -ne [IntPtr]::Zero) {
+    $style = [Win32]::GetWindowLong($h, -16)
+    $newStyle = $style -band (-bnot 0x00C40000)
+    [Win32]::SetWindowLong($h, -16, $newStyle)
+    [Win32]::SetWindowPos($h, [IntPtr]::Zero, 0, 0, ${width}, ${height}, 0x0040)
+    [Win32]::SetForegroundWindow($h)
+}
+`;
+                await execAsync(`powershell -ExecutionPolicy Bypass -Command "${psScript.replace(/"/g, '\\"').replace(/\n/g, ' ')}"`);
+                Logger.info('GameHandler', 'Borderless mode applied via Win32 APIs');
+            }
+            else if (process.platform === 'darwin') {
+                // macOS: Use AppleScript to manipulate window
+                const appleScript = `
+tell application "System Events"
+    set javaProcesses to every process whose name contains "java"
+    repeat with proc in javaProcesses
+        try
+            set frontmost of proc to true
+            set position of window 1 of proc to {0, 0}
+            set size of window 1 of proc to {${width}, ${height}}
+        end try
+    end repeat
+end tell
+`;
+                await execAsync(`osascript -e '${appleScript.replace(/'/g, "'\"'\"'")}'`);
+                Logger.info('GameHandler', 'Borderless mode applied via AppleScript');
+            }
+            else if (process.platform === 'linux') {
+                // Linux: Check session type and use appropriate tool
+                const sessionType = process.env.XDG_SESSION_TYPE || 'x11';
+
+                if (sessionType === 'x11') {
+                    // X11: Use wmctrl for fullscreen
+                    try {
+                        // Try with window title first
+                        await execAsync('wmctrl -r "Minecraft" -b add,fullscreen');
+                        Logger.info('GameHandler', 'Borderless mode applied via wmctrl');
+                    } catch (e) {
+                        // Fallback: try to find any Java window
+                        try {
+                            await execAsync('wmctrl -r :ACTIVE: -b add,fullscreen');
+                            Logger.info('GameHandler', 'Borderless mode applied via wmctrl (active window)');
+                        } catch (e2) {
+                            Logger.warn('GameHandler', 'wmctrl failed - is it installed? Run: sudo apt install wmctrl');
+                        }
+                    }
+                } else {
+                    // Wayland: Limited support - log warning
+                    Logger.warn('GameHandler', 'Wayland detected - fullscreen borderless has limited support. Window may not cover top bar.');
+                }
+            }
+        } catch (e: any) {
+            Logger.error('GameHandler', `Failed to apply borderless mode: ${e.message}`);
+        }
+    }
+
     private async checkAndExtractInstance(): Promise<string | null> {
         const instanceDir = path.join(app.getPath('userData'), 'instances', 'default');
         const dataDir = app.getPath('userData');
@@ -851,6 +944,13 @@ export class GameHandler {
             const overlayHandler = getOverlayHandler();
             if (overlayHandler) {
                 overlayHandler.setGameRunning(true);
+            }
+
+            // Apply borderless fullscreen mode if enabled (async, doesn't block)
+            if (options.settings?.borderlessMode) {
+                this.applyBorderlessPostSpawn().catch(e => {
+                    Logger.error('GameHandler', `Borderless post-spawn failed: ${e.message}`);
+                });
             }
 
             // Filter patterns for known harmless messages
