@@ -40,7 +40,8 @@
         "nsis",
         "portable"
       ],
-      "icon": "public/icon.ico"
+      "icon": "public/icon.ico",
+      "artifactName": "BlockyCRAFT-Launcher-${version}-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -51,20 +52,26 @@
       "createDesktopShortcut": false,
       "createStartMenuShortcut": false,
       "shortcutName": "BlockyCRAFT Launcher",
-      "include": "installer.nsh"
+      "include": "installer.nsh",
+      "artifactName": "BlockyCRAFT-Launcher-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "BlockyCRAFT-Launcher-Portable-${version}.${ext}"
     },
     "linux": {
       "target": [
         "AppImage"
       ],
       "icon": "public/icon.png",
-      "category": "Game"
+      "category": "Game",
+      "artifactName": "BlockyCRAFT-Launcher-${version}.${ext}"
     },
     "mac": {
       "target": [
         "dmg"
       ],
-      "icon": "public/icon.icns"
+      "icon": "public/icon.icns",
+      "artifactName": "BlockyCRAFT-Launcher-${version}-${arch}.${ext}"
     }
   },
   "devDependencies": {
