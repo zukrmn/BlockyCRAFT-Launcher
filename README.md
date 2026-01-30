@@ -88,6 +88,17 @@ The output will be in the `dist/` directory.
 *   **UpdateManager.ts**: Handles the robust dual-mirror update system (`craft.blocky.com.br` / `marina.rodrigorocha.art.br`), ensuring high availability for game updates.
 *   **JavaManager.ts**: Provides the "it just works" factor by intelligently managing the Java runtime environment.
 
+## Code Signing Policy
+
+Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+
+### Team Roles
+*   **Committers and Reviewers**: [Repository Contributors](https://github.com/zukrmn/BlockyCRAFT-Launcher/graphs/contributors)
+*   **Approvers**: Repository Owners
+
+### Privacy Policy
+This program will not transfer any information to other networked systems unless specifically requested by the user. The launcher downloads game files from official Mojang servers and BlockyCRAFT update servers (`craft.blocky.com.br`) only.
+
 </details>
 
 <details>
@@ -173,6 +184,17 @@ O arquivo de saída estará no diretório `dist/`.
 *   **GameHandler.ts**: O cérebro da operação. Gerencia a máquina de estados complexa de baixar assets, verificar hashes, construir o classpath do Java e iniciar o processo do jogo com argumentos JVM específicos para corrigir bugs legados (S3, problemas de conexão).
 *   **UpdateManager.ts**: Mantém um sistema robusto de atualizações com espelho duplo (`craft.blocky.com.br` / `marina.rodrigorocha.art.br`), garantindo alta disponibilidade para atualizações do jogo.
 *   **JavaManager.ts**: Fornece o fator "simplesmente funciona" gerenciando inteligentemente o ambiente de execução Java.
+
+## Política de Assinatura de Código
+
+Assinatura de código gratuita fornecida por [SignPath.io](https://signpath.io), certificado por [SignPath Foundation](https://signpath.org).
+
+### Funções da Equipe
+*   **Committers e Revisores**: [Contribuidores do Repositório](https://github.com/zukrmn/BlockyCRAFT-Launcher/graphs/contributors)
+*   **Aprovadores**: Proprietários do Repositório
+
+### Política de Privacidade
+Este programa não transferirá nenhuma informação para outros sistemas em rede, a menos que especificamente solicitado pelo usuário. O launcher baixa arquivos do jogo apenas dos servidores oficiais da Mojang e dos servidores de atualização do BlockyCRAFT (`craft.blocky.com.br`).
 
 </details>
 
