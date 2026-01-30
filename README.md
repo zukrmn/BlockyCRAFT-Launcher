@@ -1,8 +1,6 @@
 # BlockyCRAFT Launcher
 
-> A modern, "zero-config" launcher for BlockyCRAFT (Minecraft Beta 1.7.3), built with web technologies.
-
-![Launcher Preview](https://via.placeholder.com/800x450.png?text=BlockyCRAFT+Launcher)
+> A modern, "zero-config" launcher for BlockyCRAFT (Minecraft Beta 1.7.3).
 
 <details open>
 <summary><strong>🇺🇸 English (Click to Expand)</strong></summary>
