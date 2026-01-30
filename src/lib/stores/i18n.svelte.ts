@@ -58,7 +58,9 @@ export const translations: Record<string, Record<string, string>> = {
         "appearance.panel_blur": "Panel Blur",
         "appearance.reset": "Reset to Defaults",
         "appearance.reset_confirm": "Reset all appearance settings?",
-        "appearance.panels": "Panels (Changelog & Donators)"
+        "appearance.panels": "Panels (Changelog & Donators)",
+        "appearance.donators_only": "This feature is exclusive to donators!",
+        "appearance.donators_only_title": "Donators Only"
     },
     "pt-BR": {
         "ui.donate": "Doar",
@@ -119,7 +121,9 @@ export const translations: Record<string, Record<string, string>> = {
         "appearance.panel_blur": "Desfoque dos Painéis",
         "appearance.reset": "Restaurar Padrões",
         "appearance.reset_confirm": "Restaurar todas as configurações de aparência?",
-        "appearance.panels": "Painéis (Novidades & Apoiadores)"
+        "appearance.panels": "Painéis (Novidades & Apoiadores)",
+        "appearance.donators_only": "Esta função é exclusiva para apoiadores!",
+        "appearance.donators_only_title": "Apenas para Apoiadores"
     },
     "es-ES": {
         "ui.donate": "Donar",
@@ -180,7 +184,9 @@ export const translations: Record<string, Record<string, string>> = {
         "appearance.panel_blur": "Desenfoque de Paneles",
         "appearance.reset": "Restaurar Valores",
         "appearance.reset_confirm": "¿Restaurar todas las configuraciones de apariencia?",
-        "appearance.panels": "Paneles (Novedades & Apoyadores)"
+        "appearance.panels": "Paneles (Novedades & Apoyadores)",
+        "appearance.donators_only": "¡Esta función es exclusiva para apoyadores!",
+        "appearance.donators_only_title": "Solo para Apoyadores"
     }
 };
 
