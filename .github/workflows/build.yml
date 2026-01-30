@@ -10,92 +10,103 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            platform: linux
-          - os: windows-latest
-            platform: windows
-          - os: macos-latest
-            platform: macos
-
-    runs-on: ${{ matrix.os }}
-
+  build-linux:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build Electron app
-        run: npm run dist
+      - run: npm ci
+      - run: npm run dist
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          EP_PRE_RELEASE: true
-          PUBLISH: never
-
-      - name: Clean up extra files
-        run: |
-          rm -f dist-out/*.blockmap dist-out/*.yml dist-out/*.yaml 2>/dev/null || true
-        shell: bash
-
-      - name: Upload Linux artifacts
-        if: matrix.platform == 'linux'
+      - name: Upload Linux AppImage only
         uses: actions/upload-artifact@v4
         with:
           name: linux-build
-          path: dist-out/*.AppImage
+          path: dist-out/BlockyCRAFT-Launcher-*.AppImage
 
-      - name: Upload Windows artifacts
-        if: matrix.platform == 'windows'
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run dist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload Windows Setup only
         uses: actions/upload-artifact@v4
         with:
-          name: windows-build
-          path: |
-            dist-out/*Setup*.exe
-            dist-out/*Portable*.exe
+          name: windows-setup
+          path: dist-out/BlockyCRAFT-Launcher-Setup-*.exe
+      - name: Upload Windows Portable only
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-portable
+          path: dist-out/BlockyCRAFT-Launcher-Portable-*.exe
 
-      - name: Upload macOS artifacts
-        if: matrix.platform == 'macos'
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run dist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload macOS DMG only
         uses: actions/upload-artifact@v4
         with:
           name: macos-build
-          path: dist-out/*.dmg
+          path: dist-out/BlockyCRAFT-Launcher-*.dmg
 
   release:
-    needs: build
+    needs: [build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
-
     steps:
-      - name: Download all artifacts
+      - name: Download Linux artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          name: linux-build
+          path: release-files
 
-      - name: Display structure of downloaded files
-        run: ls -R artifacts
+      - name: Download Windows Setup
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-setup
+          path: release-files
+
+      - name: Download Windows Portable
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-portable
+          path: release-files
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-build
+          path: release-files
+
+      - name: List release files
+        run: ls -la release-files/
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            artifacts/linux-build/*.AppImage
-            artifacts/windows-build/*.exe
-            artifacts/macos-build/*.dmg
+          files: release-files/*
           draft: false
           prerelease: false
           generate_release_notes: true
-          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
