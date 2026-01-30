@@ -43,6 +43,11 @@ jobs:
           EP_PRE_RELEASE: true
           PUBLISH: never
 
+      - name: Clean up extra files
+        run: |
+          rm -f dist-out/*.blockmap dist-out/*.yml dist-out/*.yaml 2>/dev/null || true
+        shell: bash
+
       - name: Upload Linux artifacts
         if: matrix.platform == 'linux'
         uses: actions/upload-artifact@v4
@@ -55,7 +60,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: dist-out/*.exe
+          path: |
+            dist-out/*Setup*.exe
+            dist-out/*Portable*.exe
 
       - name: Upload macOS artifacts
         if: matrix.platform == 'macos'
