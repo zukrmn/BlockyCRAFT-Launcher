@@ -1,7 +1,7 @@
 {
   "name": "blockycraft-launcher",
   "private": true,
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "BlockyCRAFT Launcher - Modern launcher for Minecraft Beta 1.7.3",
   "main": "dist-electron/main.cjs",
   "type": "module",
@@ -48,9 +48,10 @@
       "installerIcon": "public/icon.ico",
       "uninstallerIcon": "public/icon.ico",
       "installerHeaderIcon": "public/icon.ico",
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "BlockyCRAFT Launcher"
+      "createDesktopShortcut": false,
+      "createStartMenuShortcut": false,
+      "shortcutName": "BlockyCRAFT Launcher",
+      "include": "installer.nsh"
     },
     "linux": {
       "target": [
