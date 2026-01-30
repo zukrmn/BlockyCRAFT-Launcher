@@ -19,6 +19,7 @@
   "build": {
     "appId": "com.blockycraft.launcher",
     "productName": "BlockyCRAFT Launcher",
+    "publish": null,
     "electronLanguages": [
       "en-US",
       "pt-BR",
