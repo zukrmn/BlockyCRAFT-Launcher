@@ -1,6 +1,7 @@
 <script lang="ts">
   import { i18n } from "../stores/i18n.svelte";
   import { ElectronService } from "../electron";
+  import { donatorsStore } from "../stores/donators.svelte";
 
   let donators = $state<{ name: string }[]>([]);
   let isLoading = $state(true);
@@ -22,11 +23,15 @@
                 const name = typeof item === 'string' ? item : (item.username || item.name);
                 return { name };
             }).filter(d => d.name); // Filter empty
+            
+            // Populate the shared donators store
+            donatorsStore.set(donators.map(d => d.name));
         }
     } catch (e) {
         console.error("Failed to load donators:", e);
         // Fallback or empty state
         donators = [];
+        donatorsStore.set([]);
     } finally {
         isLoading = false;
     }
@@ -40,6 +45,7 @@
     ElectronService.openExternal("https://craft.blocky.com.br/scoreboard/");
   }
 </script>
+
 
 <div class="donators-panel smart-scroll">
   <h3>{i18n.t("ui.donators")}</h3>

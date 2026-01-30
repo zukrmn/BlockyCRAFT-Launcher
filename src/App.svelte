@@ -9,8 +9,8 @@
   import TutorialButton from "./lib/components/TutorialButton.svelte";
   import AppearanceModal from "./lib/components/AppearanceModal.svelte";
   import { i18n } from "./lib/stores/i18n.svelte";
+  import { donatorsStore } from "./lib/stores/donators.svelte";
   import "./styles/theme.css";
-
 
   // State
   let username = $state("");
@@ -20,7 +20,6 @@
   let launchProgress = $state(0);
   let maxProgress = $state(0); // Never decreases - ensures bar doesn't go backwards
   let appearanceModalRef: AppearanceModal;
-
 
   // Map backend status messages (in Portuguese) to i18n keys
   const statusMap: Record<string, string> = {
@@ -66,7 +65,7 @@
 
     // Check for updates silently in background (optional, feature preserved)
     ElectronService.checkForUpdates();
-    
+
     // Apply saved appearance settings
     if (appearanceModalRef) {
       appearanceModalRef.initAppearance();
@@ -92,8 +91,8 @@
   // Listen for game events
   $effect(() => {
     ElectronService.onGameConnected(() => {
-        isLaunching = false;
-        isGameRunning = true;
+      isLaunching = false;
+      isGameRunning = true;
     });
 
     ElectronService.onGameClosed(() => {
@@ -104,6 +103,16 @@
     });
   });
 
+  // Watch for username changes - reset appearance if not a donator
+  $effect(() => {
+    // Skip if donators list hasn't loaded yet or username is empty
+    if (donatorsStore.list.length === 0 || !username.trim()) return;
+
+    // If user is NOT a donator, reset appearance to defaults
+    if (!donatorsStore.isDonator(username) && appearanceModalRef) {
+      appearanceModalRef.resetAndApplyDefaults();
+    }
+  });
 </script>
 
 <main class="app-layout">
@@ -116,7 +125,7 @@
     <!-- Right: Donators + Language -->
     <div class="right-column">
       <div class="lang-area">
-        <AppearanceModal bind:this={appearanceModalRef} />
+        <AppearanceModal bind:this={appearanceModalRef} {username} />
         <LanguageToggle />
         <SettingsModal />
       </div>
@@ -137,9 +146,9 @@
         <div class="progress-fill" style="width: {maxProgress}%"></div>
       </div>
     {/if}
-    
-    <ControlBar 
-      bind:username 
+
+    <ControlBar
+      bind:username
       {isLaunching}
       {isGameRunning}
       {handleLaunch}
@@ -188,7 +197,7 @@
     min-height: 0;
     height: 100%;
   }
-  
+
   /* Make donators area fill remaining space in right column */
   .donators-area {
     flex: 1;
@@ -223,7 +232,7 @@
   .progress-fill {
     height: 100%;
     background: linear-gradient(90deg, #22c55e, #4ade80);
-    box-shadow: 
+    box-shadow:
       0 0 10px #22c55e,
       0 0 20px #22c55e,
       0 0 30px rgba(34, 197, 94, 0.5);
@@ -245,5 +254,4 @@
     text-overflow: ellipsis;
     padding: 0 var(--spacing-lg);
   }
-
 </style>

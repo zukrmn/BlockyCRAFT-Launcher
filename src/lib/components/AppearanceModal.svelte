@@ -1,8 +1,16 @@
 <script lang="ts">
   import { Icons } from "../icons";
   import { i18n } from "../stores/i18n.svelte";
+  import { donatorsStore } from "../stores/donators.svelte";
+
+  // Props
+  interface Props {
+    username?: string;
+  }
+  let { username = "" }: Props = $props();
 
   let isOpen = $state(false);
+  let showDonatorPopup = $state(false);
   let fileInputRef: HTMLInputElement;
 
   // Default values
@@ -14,44 +22,98 @@
     panelOpacity: 1, // 0-1
     panelBlur: 10, // px
     colorPrimary: "#333333",
-    colorBackground: "#121212"
+    colorBackground: "#121212",
   };
 
   // Max image size in bytes (2MB)
   const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
 
-  // State - load from localStorage
-  let backgroundImage = $state(localStorage.getItem("appearance.backgroundImage") || "");
-  let backgroundFit = $state(localStorage.getItem("appearance.backgroundFit") || DEFAULTS.backgroundFit);
-  let bgDim = $state(parseInt(localStorage.getItem("appearance.bgDim") || DEFAULTS.bgDim.toString()));
-  let bgBlur = $state(parseInt(localStorage.getItem("appearance.bgBlur") || DEFAULTS.bgBlur.toString()));
-  let panelOpacity = $state(parseFloat(localStorage.getItem("appearance.panelOpacity") || DEFAULTS.panelOpacity.toString()));
-  let panelBlur = $state(parseInt(localStorage.getItem("appearance.panelBlur") || DEFAULTS.panelBlur.toString()));
-  
-  let colorPrimary = $state(localStorage.getItem("appearance.colorPrimary") || DEFAULTS.colorPrimary);
-  let colorBackground = $state(localStorage.getItem("appearance.colorBackground") || DEFAULTS.colorBackground);
-  
+  // Saved values - loaded from localStorage
+  let savedBackgroundImage =
+    localStorage.getItem("appearance.backgroundImage") || "";
+  let savedBackgroundFit =
+    localStorage.getItem("appearance.backgroundFit") || DEFAULTS.backgroundFit;
+  let savedBgDim = parseInt(
+    localStorage.getItem("appearance.bgDim") || DEFAULTS.bgDim.toString(),
+  );
+  let savedBgBlur = parseInt(
+    localStorage.getItem("appearance.bgBlur") || DEFAULTS.bgBlur.toString(),
+  );
+  let savedPanelOpacity = parseFloat(
+    localStorage.getItem("appearance.panelOpacity") ||
+      DEFAULTS.panelOpacity.toString(),
+  );
+  let savedPanelBlur = parseInt(
+    localStorage.getItem("appearance.panelBlur") ||
+      DEFAULTS.panelBlur.toString(),
+  );
+  let savedColorPrimary =
+    localStorage.getItem("appearance.colorPrimary") || DEFAULTS.colorPrimary;
+  let savedColorBackground =
+    localStorage.getItem("appearance.colorBackground") ||
+    DEFAULTS.colorBackground;
+
+  // Current editing values - start with saved values
+  let backgroundImage = $state(savedBackgroundImage);
+  let backgroundFit = $state(savedBackgroundFit);
+  let bgDim = $state(savedBgDim);
+  let bgBlur = $state(savedBgBlur);
+  let panelOpacity = $state(savedPanelOpacity);
+  let panelBlur = $state(savedPanelBlur);
+  let colorPrimary = $state(savedColorPrimary);
+  let colorBackground = $state(savedColorBackground);
+
   let errorMessage = $state("");
   let isLoadingImage = $state(false);
 
   function openModal() {
     isOpen = true;
+    showDonatorPopup = false;
     errorMessage = "";
+    // Reset to saved values when opening
+    backgroundImage = savedBackgroundImage;
+    backgroundFit = savedBackgroundFit;
+    bgDim = savedBgDim;
+    bgBlur = savedBgBlur;
+    panelOpacity = savedPanelOpacity;
+    panelBlur = savedPanelBlur;
+    colorPrimary = savedColorPrimary;
+    colorBackground = savedColorBackground;
   }
 
   function closeModal() {
     isOpen = false;
+    showDonatorPopup = false;
+    // Revert to saved appearance when closing without saving
+    applyAppearanceFromValues(
+      savedBackgroundImage,
+      savedBackgroundFit,
+      savedBgDim,
+      savedBgBlur,
+      savedPanelOpacity,
+      savedPanelBlur,
+      savedColorPrimary,
+      savedColorBackground,
+    );
   }
 
   function handleBackdropClick(e: MouseEvent) {
     if (e.target === e.currentTarget) {
-      closeModal();
+      if (showDonatorPopup) {
+        showDonatorPopup = false;
+      } else {
+        closeModal();
+      }
     }
   }
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === "Escape") {
-      closeModal();
+      if (showDonatorPopup) {
+        showDonatorPopup = false;
+      } else {
+        closeModal();
+      }
     }
   }
 
@@ -62,89 +124,90 @@
   async function handleFileSelect(e: Event) {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0];
-    
+
     if (!file) return;
-    
+
     errorMessage = "";
-    
+
     // Validate file size
     if (file.size > MAX_IMAGE_SIZE) {
       errorMessage = i18n.t("appearance.background_error_size");
       input.value = "";
       return;
     }
-    
+
     // Validate file type
     if (!file.type.startsWith("image/")) {
       errorMessage = i18n.t("appearance.background_error_invalid");
       input.value = "";
       return;
     }
-    
+
     isLoadingImage = true;
-    
+
     try {
       const reader = new FileReader();
-      
+
       reader.onload = (event) => {
         const result = event.target?.result as string;
         if (result) {
           backgroundImage = result;
-          saveAndApply();
+          applyPreview(); // Live preview only
         }
         isLoadingImage = false;
       };
-      
+
       reader.onerror = () => {
         errorMessage = i18n.t("appearance.background_error_invalid");
         isLoadingImage = false;
       };
-      
+
       reader.readAsDataURL(file);
     } catch (e) {
       errorMessage = i18n.t("appearance.background_error_invalid");
       isLoadingImage = false;
     }
-    
+
     // Reset input to allow selecting the same file again
     input.value = "";
   }
 
   function removeBackground() {
     backgroundImage = "";
-    saveAndApply();
+    applyPreview();
   }
 
   function setBackgroundFit(fit: string) {
     backgroundFit = fit;
-    saveAndApply();
+    applyPreview();
   }
 
   function handleColorPrimaryChange(e: Event) {
     colorPrimary = (e.target as HTMLInputElement).value;
-    saveAndApply();
+    applyPreview();
   }
 
   function handleColorBackgroundChange(e: Event) {
     colorBackground = (e.target as HTMLInputElement).value;
-    saveAndApply();
+    applyPreview();
   }
 
   // Handle sliders
-  function handleSliderChange(e: Event, type: 'bgDim' | 'bgBlur' | 'panelOpacity' | 'panelBlur') {
+  function handleSliderChange(
+    e: Event,
+    type: "bgDim" | "bgBlur" | "panelOpacity" | "panelBlur",
+  ) {
     const value = parseFloat((e.target as HTMLInputElement).value);
-    
-    if (type === 'bgDim') bgDim = value;
-    else if (type === 'bgBlur') bgBlur = value;
-    else if (type === 'panelOpacity') panelOpacity = value;
-    else if (type === 'panelBlur') panelBlur = value;
-    
-    saveAndApply();
+
+    if (type === "bgDim") bgDim = value;
+    else if (type === "bgBlur") bgBlur = value;
+    else if (type === "panelOpacity") panelOpacity = value;
+    else if (type === "panelBlur") panelBlur = value;
+
+    applyPreview();
   }
 
   function resetToDefaults() {
-    // if (!confirm(i18n.t("appearance.reset_confirm"))) return; // Removed to fix focus bug
-    
     backgroundImage = DEFAULTS.backgroundImage;
     backgroundFit = DEFAULTS.backgroundFit;
     bgDim = DEFAULTS.bgDim;
@@ -153,11 +216,38 @@
     panelBlur = DEFAULTS.panelBlur;
     colorPrimary = DEFAULTS.colorPrimary;
     colorBackground = DEFAULTS.colorBackground;
-    
-    saveAndApply();
+
+    applyPreview();
   }
 
-  function saveAndApply() {
+  // Apply live preview without saving
+  function applyPreview() {
+    applyAppearanceFromValues(
+      backgroundImage,
+      backgroundFit,
+      bgDim,
+      bgBlur,
+      panelOpacity,
+      panelBlur,
+      colorPrimary,
+      colorBackground,
+    );
+  }
+
+  // Attempt to save - checks donor status first
+  function handleSave() {
+    // Check if user is a donator (case-sensitive)
+    if (!donatorsStore.isDonator(username)) {
+      showDonatorPopup = true;
+      return;
+    }
+
+    // User is a donator, proceed with save
+    saveSettings();
+    closeModal();
+  }
+
+  function saveSettings() {
     try {
       // Save to localStorage
       if (backgroundImage) {
@@ -172,52 +262,124 @@
       localStorage.setItem("appearance.panelBlur", panelBlur.toString());
       localStorage.setItem("appearance.colorPrimary", colorPrimary);
       localStorage.setItem("appearance.colorBackground", colorBackground);
-      
-      // Apply to DOM
-      applyAppearance();
+
+      // Update saved values
+      savedBackgroundImage = backgroundImage;
+      savedBackgroundFit = backgroundFit;
+      savedBgDim = bgDim;
+      savedBgBlur = bgBlur;
+      savedPanelOpacity = panelOpacity;
+      savedPanelBlur = panelBlur;
+      savedColorPrimary = colorPrimary;
+      savedColorBackground = colorBackground;
     } catch (e) {
       console.error("Failed to save appearance settings:", e);
       errorMessage = "Failed to save settings (storage full?)";
     }
   }
 
-  function applyAppearance() {
+  function applyAppearanceFromValues(
+    bgImage: string,
+    bgFit: string,
+    dim: number,
+    blur: number,
+    pOpacity: number,
+    pBlur: number,
+    cPrimary: string,
+    cBackground: string,
+  ) {
     const root = document.documentElement;
-    
+
     // Background Image
-    // Note: We use CSS variables now, handled by theme.css body::before
-    if (backgroundImage) {
-      root.style.setProperty("--bg-image", `url(${backgroundImage})`);
-      root.style.setProperty("--bg-fit", backgroundFit);
+    if (bgImage) {
+      root.style.setProperty("--bg-image", `url(${bgImage})`);
+      root.style.setProperty("--bg-fit", bgFit);
     } else {
       root.style.removeProperty("--bg-image");
       root.style.removeProperty("--bg-fit");
     }
 
     // Advanced Controls
-    root.style.setProperty("--bg-dim", `${bgDim}%`);
-    root.style.setProperty("--bg-blur", `${bgBlur}px`);
-    root.style.setProperty("--panel-opacity", panelOpacity.toString());
-    root.style.setProperty("--panel-blur", `${panelBlur}px`);
-    
+    root.style.setProperty("--bg-dim", `${dim}%`);
+    root.style.setProperty("--bg-blur", `${blur}px`);
+    root.style.setProperty("--panel-opacity", pOpacity.toString());
+    root.style.setProperty("--panel-blur", `${pBlur}px`);
+
     // Colors
-    root.style.setProperty("--color-primary", colorPrimary);
-    root.style.setProperty("--color-primary-hover", adjustBrightness(colorPrimary, -20));
-    root.style.setProperty("--color-bg-dark", colorBackground);
+    root.style.setProperty("--color-primary", cPrimary);
+    root.style.setProperty(
+      "--color-primary-hover",
+      adjustBrightness(cPrimary, -20),
+    );
+    root.style.setProperty("--color-bg-dark", cBackground);
   }
 
   // Helper to darken/lighten a hex color
   function adjustBrightness(hex: string, percent: number): string {
     const num = parseInt(hex.replace("#", ""), 16);
     const r = Math.min(255, Math.max(0, (num >> 16) + percent));
-    const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + percent));
-    const b = Math.min(255, Math.max(0, (num & 0x0000FF) + percent));
+    const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00ff) + percent));
+    const b = Math.min(255, Math.max(0, (num & 0x0000ff) + percent));
     return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
   }
 
   // Export for App.svelte to call on mount
   export function initAppearance() {
-    applyAppearance();
+    applyAppearanceFromValues(
+      savedBackgroundImage,
+      savedBackgroundFit,
+      savedBgDim,
+      savedBgBlur,
+      savedPanelOpacity,
+      savedPanelBlur,
+      savedColorPrimary,
+      savedColorBackground,
+    );
+  }
+
+  // Export for App.svelte to reset appearance when non-donator is detected
+  export function resetAndApplyDefaults() {
+    // Clear localStorage
+    localStorage.removeItem("appearance.backgroundImage");
+    localStorage.removeItem("appearance.backgroundFit");
+    localStorage.removeItem("appearance.bgDim");
+    localStorage.removeItem("appearance.bgBlur");
+    localStorage.removeItem("appearance.panelOpacity");
+    localStorage.removeItem("appearance.panelBlur");
+    localStorage.removeItem("appearance.colorPrimary");
+    localStorage.removeItem("appearance.colorBackground");
+
+    // Reset saved values
+    savedBackgroundImage = DEFAULTS.backgroundImage;
+    savedBackgroundFit = DEFAULTS.backgroundFit;
+    savedBgDim = DEFAULTS.bgDim;
+    savedBgBlur = DEFAULTS.bgBlur;
+    savedPanelOpacity = DEFAULTS.panelOpacity;
+    savedPanelBlur = DEFAULTS.panelBlur;
+    savedColorPrimary = DEFAULTS.colorPrimary;
+    savedColorBackground = DEFAULTS.colorBackground;
+
+    // Reset current editing values
+    backgroundImage = DEFAULTS.backgroundImage;
+    backgroundFit = DEFAULTS.backgroundFit;
+    bgDim = DEFAULTS.bgDim;
+    bgBlur = DEFAULTS.bgBlur;
+    panelOpacity = DEFAULTS.panelOpacity;
+    panelBlur = DEFAULTS.panelBlur;
+    colorPrimary = DEFAULTS.colorPrimary;
+    colorBackground = DEFAULTS.colorBackground;
+
+    // Apply defaults to DOM
+    applyAppearanceFromValues(
+      DEFAULTS.backgroundImage,
+      DEFAULTS.backgroundFit,
+      DEFAULTS.bgDim,
+      DEFAULTS.bgBlur,
+      DEFAULTS.panelOpacity,
+      DEFAULTS.panelBlur,
+      DEFAULTS.colorPrimary,
+      DEFAULTS.colorBackground,
+    );
   }
 </script>
 
@@ -248,12 +410,20 @@
           <!-- Background Image Section -->
           <div class="setting-section">
             <h3>{i18n.t("appearance.background")}</h3>
-            
+
             <div class="background-controls">
               {#if backgroundImage}
                 <div class="preview-container">
-                  <img src={backgroundImage} alt="Background preview" class="background-preview" />
-                  <button class="remove-btn" onclick={removeBackground} title={i18n.t("appearance.background_remove")}>
+                  <img
+                    src={backgroundImage}
+                    alt="Background preview"
+                    class="background-preview"
+                  />
+                  <button
+                    class="remove-btn"
+                    onclick={removeBackground}
+                    title={i18n.t("appearance.background_remove")}
+                  >
                     <span class="icon-small">{@html Icons.Trash}</span>
                   </button>
                 </div>
@@ -263,7 +433,7 @@
                   <span>{i18n.t("appearance.background_select")}</span>
                 </div>
               {/if}
-              
+
               <input
                 type="file"
                 accept="image/*"
@@ -271,18 +441,18 @@
                 onchange={handleFileSelect}
                 style="display: none;"
               />
-              
+
               {#if backgroundImage}
                 <button class="btn-secondary" onclick={triggerFileSelect}>
                   {i18n.t("appearance.background_select")}
                 </button>
               {/if}
             </div>
-            
+
             {#if errorMessage}
               <span class="error-msg">{errorMessage}</span>
             {/if}
-            
+
             {#if isLoadingImage}
               <span class="loading-msg">Loading...</span>
             {/if}
@@ -293,15 +463,15 @@
             <div class="setting-section">
               <h3>{i18n.t("appearance.zoom")}</h3>
               <div class="fit-options">
-                <button 
-                  class="fit-option" 
+                <button
+                  class="fit-option"
                   class:selected={backgroundFit === "cover"}
                   onclick={() => setBackgroundFit("cover")}
                 >
                   {i18n.t("appearance.zoom_cover")}
                 </button>
-                <button 
-                  class="fit-option" 
+                <button
+                  class="fit-option"
                   class:selected={backgroundFit === "contain"}
                   onclick={() => setBackgroundFit("contain")}
                 >
@@ -310,62 +480,91 @@
               </div>
 
               <!-- Background Sliders -->
-               <div class="slider-group">
-                 <div class="slider-row">
-                    <label>{i18n.t("appearance.bg_dim")}</label>
-                    <input type="range" min="0" max="100" value={bgDim} oninput={(e) => handleSliderChange(e, 'bgDim')} />
-                    <span class="slider-value">{bgDim}%</span>
-                 </div>
-                 <div class="slider-row">
-                    <label>{i18n.t("appearance.bg_blur")}</label>
-                    <input type="range" min="0" max="10" step="0.5" value={bgBlur} oninput={(e) => handleSliderChange(e, 'bgBlur')} />
-                    <span class="slider-value">{bgBlur}px</span>
-                 </div>
-               </div>
+              <div class="slider-group">
+                <div class="slider-row">
+                  <label>{i18n.t("appearance.bg_dim")}</label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={bgDim}
+                    oninput={(e) => handleSliderChange(e, "bgDim")}
+                  />
+                  <span class="slider-value">{bgDim}%</span>
+                </div>
+                <div class="slider-row">
+                  <label>{i18n.t("appearance.bg_blur")}</label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="10"
+                    step="0.5"
+                    value={bgBlur}
+                    oninput={(e) => handleSliderChange(e, "bgBlur")}
+                  />
+                  <span class="slider-value">{bgBlur}px</span>
+                </div>
+              </div>
             </div>
           {/if}
 
           <!-- Panel Controls -->
-           <div class="setting-section">
-              <h3>{i18n.t("appearance.panels")}</h3>
-               <div class="slider-group">
-                 <div class="slider-row">
-                    <label>{i18n.t("appearance.panel_opacity")}</label>
-                    <input type="range" min="0" max="1" step="0.05" value={panelOpacity} oninput={(e) => handleSliderChange(e, 'panelOpacity')} />
-                    <span class="slider-value">{Math.round(panelOpacity * 100)}%</span>
-                 </div>
-                 <div class="slider-row">
-                    <label>{i18n.t("appearance.panel_blur")}</label>
-                    <input type="range" min="0" max="20" step="1" value={panelBlur} oninput={(e) => handleSliderChange(e, 'panelBlur')} />
-                    <span class="slider-value">{panelBlur}px</span>
-                 </div>
-               </div>
-           </div>
+          <div class="setting-section">
+            <h3>{i18n.t("appearance.panels")}</h3>
+            <div class="slider-group">
+              <div class="slider-row">
+                <label>{i18n.t("appearance.panel_opacity")}</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={panelOpacity}
+                  oninput={(e) => handleSliderChange(e, "panelOpacity")}
+                />
+                <span class="slider-value"
+                  >{Math.round(panelOpacity * 100)}%</span
+                >
+              </div>
+              <div class="slider-row">
+                <label>{i18n.t("appearance.panel_blur")}</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="20"
+                  step="1"
+                  value={panelBlur}
+                  oninput={(e) => handleSliderChange(e, "panelBlur")}
+                />
+                <span class="slider-value">{panelBlur}px</span>
+              </div>
+            </div>
+          </div>
 
           <!-- Colors Section -->
           <div class="setting-section">
             <h3>{i18n.t("appearance.colors")}</h3>
-            
+
             <div class="color-grid">
               <div class="color-item">
                 <label>{i18n.t("appearance.color_primary")}</label>
                 <div class="color-input-wrapper">
-                  <input 
-                    type="color" 
-                    value={colorPrimary} 
+                  <input
+                    type="color"
+                    value={colorPrimary}
                     onchange={handleColorPrimaryChange}
                     class="color-picker"
                   />
                   <span class="color-value">{colorPrimary}</span>
                 </div>
               </div>
-              
+
               <div class="color-item">
                 <label>{i18n.t("appearance.color_background")}</label>
                 <div class="color-input-wrapper">
-                  <input 
-                    type="color" 
-                    value={colorBackground} 
+                  <input
+                    type="color"
+                    value={colorBackground}
                     onchange={handleColorBackgroundChange}
                     class="color-picker"
                   />
@@ -381,10 +580,31 @@
             <span class="icon-small">{@html Icons.RotateCcw}</span>
             {i18n.t("appearance.reset")}
           </button>
-          <button class="btn-close" onclick={closeModal}>
-            {i18n.t("ui.close")}
+          <button class="btn-save" onclick={handleSave}>
+            {i18n.t("ui.save")}
           </button>
         </div>
+      </div>
+    </div>
+  {/if}
+
+  <!-- Donator-Only Popup -->
+  {#if showDonatorPopup}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="popup-backdrop" onclick={() => (showDonatorPopup = false)}>
+      <div class="popup-modal" onclick={(e) => e.stopPropagation()}>
+        <div class="popup-icon">
+          <span class="icon-large">{@html Icons.Lock}</span>
+        </div>
+        <h3>{i18n.t("appearance.donators_only_title")}</h3>
+        <p>{i18n.t("appearance.donators_only")}</p>
+        <button
+          class="btn-popup-close"
+          onclick={() => (showDonatorPopup = false)}
+        >
+          {i18n.t("ui.close")}
+        </button>
       </div>
     </div>
   {/if}
@@ -666,41 +886,41 @@
   }
 
   .slider-row {
-     display: flex;
-     align-items: center;
-     gap: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
 
   .slider-row label {
-      font-size: 0.85rem;
-      width: 120px;
-      color: var(--color-text-muted);
+    font-size: 0.85rem;
+    width: 120px;
+    color: var(--color-text-muted);
   }
 
   .slider-row input[type="range"] {
-      flex: 1;
-      height: 4px;
-      border-radius: 2px;
-      background: #4a4a4a;
-      outline: none;
-      -webkit-appearance: none;
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: #4a4a4a;
+    outline: none;
+    -webkit-appearance: none;
   }
 
   .slider-row input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: white;
-      cursor: pointer;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    cursor: pointer;
   }
 
   .slider-value {
-      width: 40px;
-      text-align: right;
-      font-size: 0.85rem;
-      font-family: monospace;
-      color: var(--color-text-main);
+    width: 40px;
+    text-align: right;
+    font-size: 0.85rem;
+    font-family: monospace;
+    color: var(--color-text-main);
   }
 
   .color-grid {
@@ -784,24 +1004,97 @@
     color: var(--color-text-main);
   }
 
-  .btn-close {
-    background: white;
-    color: black;
+  /* Icon within buttons inherit proper colors */
+  .close-btn :global(.icon),
+  .btn-reset :global(.icon-small) {
+    color: inherit;
+  }
+
+  /* Save button - gold/premium style */
+  .btn-save {
+    background: linear-gradient(135deg, #bf953f, #fcf6ba, #bf953f);
+    background-size: 200% auto;
+    color: #1a1a1a;
     border: none;
     border-radius: var(--radius-md);
     padding: 8px 20px;
     font-weight: 600;
     cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .btn-save:hover {
+    background-position: right center;
+    filter: brightness(1.1);
+  }
+
+  /* Donator-Only Popup */
+  .popup-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+  }
+
+  .popup-modal {
+    background: var(--color-bg-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg) calc(var(--spacing-lg) * 2);
+    text-align: center;
+    max-width: 320px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  }
+
+  .popup-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--spacing-md);
+    color: #bf953f;
+  }
+
+  .popup-icon :global(svg) {
+    width: 48px;
+    height: 48px;
+  }
+
+  .popup-modal h3 {
+    margin: 0 0 var(--spacing-sm) 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    background: linear-gradient(to right, #bf953f, #fcf6ba, #bf953f);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .popup-modal p {
+    margin: 0 0 var(--spacing-lg) 0;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+  }
+
+  .btn-popup-close {
+    background: var(--color-bg-input);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 8px 24px;
+    color: var(--color-text-main);
+    font-size: 0.9rem;
+    cursor: pointer;
     transition: all 0.2s;
   }
 
-  .btn-close:hover {
-    filter: brightness(0.9);
-  }
-
-  /* Icon within buttons inherit proper colors */
-  .close-btn :global(.icon),
-  .btn-reset :global(.icon-small) {
-    color: inherit;
+  .btn-popup-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--color-border-hover);
   }
 </style>
