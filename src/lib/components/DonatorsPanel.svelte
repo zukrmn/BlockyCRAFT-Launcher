@@ -41,8 +41,8 @@
     fetchDonators();
   });
 
-  function openScoreboard() {
-    ElectronService.openExternal("https://craft.blocky.com.br/scoreboard/");
+  function openScoreboard(username: string) {
+    ElectronService.openExternal(`https://craft.blocky.com.br/scoreboard/?player=${encodeURIComponent(username)}`);
   }
 </script>
 
@@ -55,7 +55,7 @@
     {:else}
         {#each donators as donor}
         <!-- Converting div to button for accessibility and interaction -->
-        <button class="donor-item" title={donor.name} onclick={openScoreboard}>
+        <button class="donor-item" title={donor.name} onclick={() => openScoreboard(donor.name)}>
             <img 
             src="https://minotar.net/avatar/{donor.name}/64" 
             alt={donor.name}
