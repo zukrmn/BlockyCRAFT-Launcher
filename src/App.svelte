@@ -32,6 +32,7 @@
     "Baixando nativos...": "status.downloadingNatives",
     "Configurando Fabric/StationAPI...": "status.configuringFabric",
     "Iniciando Jogo...": "status.startingGame",
+    "Textura atualizada!": "status.textureUpdated",
   };
 
   function translateStatus(status: string): string {

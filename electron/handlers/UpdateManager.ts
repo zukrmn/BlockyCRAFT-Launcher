@@ -27,18 +27,24 @@ interface RemoteVersionInfo {
         url: UrlOrUrls;  // Can be string or string[] for fallback URLs
         notes?: string;
     };
+    texturepacks?: {
+        version: string;
+        url: UrlOrUrls;  // Direct URL to betaoverhauled.zip
+    };
 }
 
 interface LocalVersionInfo {
     instance: string;
     libraries: string;
     mods: string;
+    texturepacks: string;
 }
 
 interface UpdateCheckResult {
     instanceUpdate: boolean;
     librariesUpdate: boolean;
     modsUpdate: boolean;
+    texturepacksUpdate: boolean;
     remoteVersions: RemoteVersionInfo | null;
     error?: string;
 }
@@ -83,7 +89,8 @@ export class UpdateManager {
         return {
             instance: '0.0.0',
             libraries: '0.0.0',
-            mods: '0.0.0'
+            mods: '0.0.0',
+            texturepacks: '0.0.0'
         };
     }
 
@@ -106,7 +113,7 @@ export class UpdateManager {
         for (const url of VERSION_JSON_URLS) {
             try {
                 console.log('[UpdateManager] Trying to fetch versions from:', url);
-                const response = await fetch(url, { 
+                const response = await fetch(url, {
                     signal: AbortSignal.timeout(10000) // 10 second timeout
                 });
 
@@ -141,6 +148,7 @@ export class UpdateManager {
                 instanceUpdate: false,
                 librariesUpdate: false,
                 modsUpdate: false,
+                texturepacksUpdate: false,
                 remoteVersions: null,
                 error: 'Failed to fetch remote version info'
             };
@@ -151,16 +159,20 @@ export class UpdateManager {
         const librariesUpdate = false; // Disabled - see GameHandler for Maven-based downloads
         const modsUpdate = remoteVersions.mods ?
             remoteVersions.mods.version !== localVersions.mods : false;
+        const texturepacksUpdate = remoteVersions.texturepacks ?
+            remoteVersions.texturepacks.version !== localVersions.texturepacks : false;
 
         console.log('[UpdateManager] Update check result:', {
             instanceUpdate,
             librariesUpdate: 'DISABLED (Maven-based)',
             modsUpdate,
+            texturepacksUpdate,
             local: localVersions,
             remote: {
                 instance: remoteVersions.instance.version,
                 libraries: remoteVersions.libraries?.version ?? 'N/A (Maven-based)',
-                mods: remoteVersions.mods?.version
+                mods: remoteVersions.mods?.version,
+                texturepacks: remoteVersions.texturepacks?.version
             }
         });
 
@@ -168,6 +180,7 @@ export class UpdateManager {
             instanceUpdate,
             librariesUpdate,
             modsUpdate,
+            texturepacksUpdate,
             remoteVersions
         };
     }
@@ -283,7 +296,7 @@ export class UpdateManager {
     private backupUserData(): void {
         const backupDir = path.join(this.dataPath, 'update_backup');
         const dotMinecraft = path.join(this.instanceDir, '.minecraft');
-        
+
         // Ensure clean backup dir
         if (fs.existsSync(backupDir)) {
             fs.rmSync(backupDir, { recursive: true, force: true });
@@ -300,7 +313,7 @@ export class UpdateManager {
         ];
 
         console.log('[UpdateManager] Backing up user data...');
-        
+
         for (const item of itemsToBackup) {
             const src = path.join(dotMinecraft, item);
             const dest = path.join(backupDir, item);
@@ -326,7 +339,7 @@ export class UpdateManager {
         if (!fs.existsSync(backupDir)) return;
 
         console.log('[UpdateManager] Restoring user data...');
-        
+
         const items = fs.readdirSync(backupDir);
         for (const item of items) {
             const src = path.join(backupDir, item);
@@ -373,24 +386,24 @@ export class UpdateManager {
             // 2. Clear old instance
             // We can now safely clear everything since we have a backup
             if (fs.existsSync(this.instanceDir)) {
-                 // Try to keep libraries if possible to save bandwidth, but for simplicity
-                 // and robustness, let's trust the backup. 
-                 // Actually, libraries are separate now or inside?
-                 // In this codebase, libraries are in instanceDir/libraries.
-                 // We should NOT delete libraries if possible, or we rely on Maven.
-                 // Ideally, we only clear .minecraft and other config files.
-                 // But cleaning the whole dir ensures no leftover junk.
-                 // Given we don't backup libraries (they are re-downloaded/checked), 
-                 // we might want to check if we should preserve them.
-                 // But wait, updateLibraries is effectively disabled/Maven based.
-                 // So re-downloading them is fine/expected if missing.
-                 
-                 // However, let's just clear .minecraft mostly.
+                // Try to keep libraries if possible to save bandwidth, but for simplicity
+                // and robustness, let's trust the backup. 
+                // Actually, libraries are separate now or inside?
+                // In this codebase, libraries are in instanceDir/libraries.
+                // We should NOT delete libraries if possible, or we rely on Maven.
+                // Ideally, we only clear .minecraft and other config files.
+                // But cleaning the whole dir ensures no leftover junk.
+                // Given we don't backup libraries (they are re-downloaded/checked), 
+                // we might want to check if we should preserve them.
+                // But wait, updateLibraries is effectively disabled/Maven based.
+                // So re-downloading them is fine/expected if missing.
+
+                // However, let's just clear .minecraft mostly.
             }
 
             // Extract
             progressCallback?.('Extraindo instância...', 50);
-            
+
             // If we want to be safe, we can just extract over.
             // But deleting ensures clean state.
             // Let's rely on extraction overwriting, but for instance.zip which contains a full setup,
@@ -400,11 +413,11 @@ export class UpdateManager {
             // The previous logic had:
             // if (fs.existsSync(optionsPath)) fs.copyFileSync(optionsPath, optionsBackup);
             // This was extremely limited.
-            
+
             // Let's clear properly.
             // But we must NOT delete the libraries folder if it exists and we want to keep it?
             // Actually, GameHandler manages libraries now via Maven.
-            
+
             this.extractZip(tempZip, this.instanceDir);
 
             // 3. Restore User Data
@@ -525,6 +538,60 @@ export class UpdateManager {
     }
 
     /**
+     * Performs texture pack update
+     * Only replaces betaoverhauled.zip, preserving other user texture packs
+     */
+    public async updateTexturepacks(
+        remoteVersions: RemoteVersionInfo,
+        progressCallback?: (status: string, percent: number) => void
+    ): Promise<void> {
+        if (!remoteVersions.texturepacks) {
+            console.log('[UpdateManager] No texture pack update available');
+            return;
+        }
+
+        const texturepacksDir = path.join(this.instanceDir, '.minecraft', 'texturepacks');
+        const targetFile = path.join(texturepacksDir, 'betaoverhauled.zip');
+
+        try {
+            // Ensure texturepacks directory exists
+            fs.mkdirSync(texturepacksDir, { recursive: true });
+
+            // Download directly to target location (replacing if exists)
+            progressCallback?.('Baixando textura...', 0);
+
+            // Download to temp first, then move (atomic operation)
+            const tempFile = path.join(this.dataPath, 'temp_texturepack.zip');
+            await this.downloadFile(remoteVersions.texturepacks.url, tempFile, progressCallback);
+
+            // Remove old texture pack if exists
+            if (fs.existsSync(targetFile)) {
+                fs.unlinkSync(targetFile);
+            }
+
+            // Move to final location
+            fs.renameSync(tempFile, targetFile);
+
+            // Update local version
+            const localVersions = this.getLocalVersions();
+            localVersions.texturepacks = remoteVersions.texturepacks.version;
+            this.saveLocalVersions(localVersions);
+
+            progressCallback?.('Textura atualizada!', 100);
+            console.log('[UpdateManager] Texture pack updated: betaoverhauled.zip');
+
+        } catch (e: any) {
+            console.error('[UpdateManager] Failed to update texture pack:', e);
+            // Cleanup temp file if exists
+            const tempFile = path.join(this.dataPath, 'temp_texturepack.zip');
+            if (fs.existsSync(tempFile)) {
+                fs.unlinkSync(tempFile);
+            }
+            throw e;
+        }
+    }
+
+    /**
      * Performs all necessary updates
      */
     public async performAllUpdates(
@@ -544,7 +611,8 @@ export class UpdateManager {
             const totalUpdates = [
                 updateCheck.instanceUpdate,
                 updateCheck.librariesUpdate,
-                updateCheck.modsUpdate
+                updateCheck.modsUpdate,
+                updateCheck.texturepacksUpdate
             ].filter(Boolean).length;
 
             if (totalUpdates === 0) {
@@ -592,6 +660,21 @@ export class UpdateManager {
                 const progressRange = 100 / totalUpdates;
 
                 await this.updateMods(
+                    updateCheck.remoteVersions,
+                    (status, percent) => {
+                        const totalPercent = baseProgress + (percent / 100) * progressRange;
+                        progressCallback?.(status, Math.round(totalPercent));
+                    }
+                );
+            }
+
+            // Texture packs update
+            if (updateCheck.texturepacksUpdate) {
+                currentUpdate++;
+                const baseProgress = ((currentUpdate - 1) / totalUpdates) * 100;
+                const progressRange = 100 / totalUpdates;
+
+                await this.updateTexturepacks(
                     updateCheck.remoteVersions,
                     (status, percent) => {
                         const totalPercent = baseProgress + (percent / 100) * progressRange;
