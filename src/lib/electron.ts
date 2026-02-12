@@ -28,7 +28,7 @@ export const ElectronService = {
         return electron.invoke('launch-game', { username, settings });
     },
 
-    async checkForUpdates(): Promise<{ available: boolean; version?: string; notes?: string }> {
+    async checkForUpdates(): Promise<{ available: boolean; launcherUpdate?: boolean; launcherDownloadUrl?: string; version?: string; notes?: string }> {
         if (!electron) return { available: false };
         try {
             return await electron.invoke('check-update-status', null);

@@ -19,7 +19,14 @@
   let launchStatus = $state("");
   let launchProgress = $state(0);
   let maxProgress = $state(0); // Never decreases - ensures bar doesn't go backwards
+  let launcherUpdateAvailable = $state(false);
+  let launcherDownloadUrl = $state("");
   let appearanceModalRef: AppearanceModal;
+
+  // Derived: respect skip-update setting from localStorage
+  let skipUpdateEnabled = $derived(
+    localStorage.getItem("settings.skipUpdate") === "true"
+  );
 
   // Map backend status messages (in Portuguese) to i18n keys
   const statusMap: Record<string, string> = {
@@ -64,8 +71,12 @@
       }
     });
 
-    // Check for updates silently in background (optional, feature preserved)
-    ElectronService.checkForUpdates();
+    // Check for updates (including launcher self-update)
+    const updateResult = await ElectronService.checkForUpdates();
+    if (updateResult.launcherUpdate && updateResult.launcherDownloadUrl) {
+      launcherUpdateAvailable = true;
+      launcherDownloadUrl = updateResult.launcherDownloadUrl;
+    }
 
     // Apply saved appearance settings
     if (appearanceModalRef) {
@@ -154,6 +165,8 @@
       {isGameRunning}
       {handleLaunch}
       handleClose={ElectronService.killGame}
+      launcherUpdateAvailable={launcherUpdateAvailable && !skipUpdateEnabled}
+      {launcherDownloadUrl}
     />
   </footer>
 </main>

@@ -1028,13 +1028,15 @@ end tell
                 return { available: false, error: 'Failed to fetch version info' };
             }
 
-            const hasUpdates = updateCheck.instanceUpdate ||
+            const hasContentUpdates = updateCheck.instanceUpdate ||
                 updateCheck.librariesUpdate ||
                 updateCheck.modsUpdate;
 
-            if (hasUpdates) {
+            if (hasContentUpdates || updateCheck.launcherUpdate) {
                 return {
                     available: true,
+                    launcherUpdate: updateCheck.launcherUpdate,
+                    launcherDownloadUrl: updateCheck.launcherDownloadUrl,
                     instanceUpdate: updateCheck.instanceUpdate,
                     librariesUpdate: updateCheck.librariesUpdate,
                     modsUpdate: updateCheck.modsUpdate,

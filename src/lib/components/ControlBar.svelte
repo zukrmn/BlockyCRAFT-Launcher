@@ -7,6 +7,8 @@
     username = $bindable(""),
     isLaunching = false,
     isGameRunning = false,
+    launcherUpdateAvailable = false,
+    launcherDownloadUrl = "",
     handleLaunch,
     handleClose
   } = $props();
@@ -15,9 +17,19 @@
     await ElectronService.openExternal("https://craft.blocky.com.br/donate/");
   }
 
+  async function handleUpdate() {
+    if (launcherDownloadUrl) {
+      await ElectronService.openExternal(launcherDownloadUrl);
+    }
+  }
+
   function onKey(e: KeyboardEvent) {
     if (e.key === "Enter" && username.trim()) {
-      handleLaunch();
+      if (launcherUpdateAvailable) {
+        handleUpdate();
+      } else {
+        handleLaunch();
+      }
     }
   }
 </script>
@@ -39,7 +51,7 @@
     />
   </div>
 
-  <!-- Play / Loading / Close -->
+  <!-- Play / Update / Loading / Close -->
   {#if isLaunching}
     <div class="loading-wrapper">
       <img src="loading.gif" alt="Loading" class="loading-anim" />
@@ -47,6 +59,13 @@
   {:else if isGameRunning}
     <button class="btn-close" onclick={handleClose}>
       {i18n.t("ui.close")}
+    </button>
+  {:else if launcherUpdateAvailable}
+    <button
+      class="btn-update"
+      onclick={handleUpdate}
+    >
+      {i18n.t("ui.update")}
     </button>
   {:else}
     <button
@@ -238,6 +257,34 @@
   .btn-close:hover {
     background: #dc2626;
     transform: translateY(-1px);
+  }
+
+  /* Update button - Green gradient (matches progress bar) */
+  @keyframes pulse-green {
+    0% {
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    }
+  }
+
+  .btn-update {
+    background: linear-gradient(135deg, #16a34a, #22c55e, #4ade80);
+    color: white;
+    min-width: 100px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: pulse-green 2s infinite;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+
+  .btn-update:hover {
+    transform: translateY(-2px) scale(1.05);
+    filter: brightness(1.15);
+    box-shadow: 0 4px 16px rgba(34, 197, 94, 0.5);
   }
 
 </style>

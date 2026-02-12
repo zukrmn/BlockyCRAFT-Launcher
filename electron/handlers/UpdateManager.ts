@@ -41,6 +41,8 @@ interface LocalVersionInfo {
 }
 
 interface UpdateCheckResult {
+    launcherUpdate: boolean;
+    launcherDownloadUrl: string | null;
     instanceUpdate: boolean;
     librariesUpdate: boolean;
     modsUpdate: boolean;
@@ -139,12 +141,46 @@ export class UpdateManager {
     /**
      * Checks what updates are available
      */
+    /**
+     * Compares two semver strings (major.minor.patch). Returns true if remote > local.
+     */
+    private isNewerVersion(remote: string, local: string): boolean {
+        const parseParts = (v: string) => v.split('.').map(n => parseInt(n, 10) || 0);
+        const r = parseParts(remote);
+        const l = parseParts(local);
+        for (let i = 0; i < Math.max(r.length, l.length); i++) {
+            const rp = r[i] || 0;
+            const lp = l[i] || 0;
+            if (rp > lp) return true;
+            if (rp < lp) return false;
+        }
+        return false;
+    }
+
+    /**
+     * Returns the platform-specific download URL for the latest launcher release.
+     */
+    private getLauncherDownloadUrl(): string {
+        const base = 'https://github.com/zukrmn/BlockyCRAFT-Launcher/releases/latest/download';
+        switch (process.platform) {
+            case 'win32':
+                return `${base}/BlockyCRAFT-Launcher-Setup.exe`;
+            case 'darwin':
+                return `${base}/BlockyCRAFT-Launcher-arm64.dmg`;
+            case 'linux':
+            default:
+                return `${base}/BlockyCRAFT-Launcher.AppImage`;
+        }
+    }
+
     public async checkForUpdates(): Promise<UpdateCheckResult> {
         const localVersions = this.getLocalVersions();
         const remoteVersions = await this.fetchRemoteVersions();
 
         if (!remoteVersions) {
             return {
+                launcherUpdate: false,
+                launcherDownloadUrl: null,
                 instanceUpdate: false,
                 librariesUpdate: false,
                 modsUpdate: false,
@@ -152,6 +188,15 @@ export class UpdateManager {
                 remoteVersions: null,
                 error: 'Failed to fetch remote version info'
             };
+        }
+
+        // Launcher self-update check
+        const currentVersion = app.getVersion();
+        const launcherUpdate = this.isNewerVersion(remoteVersions.launcher_version, currentVersion);
+        const launcherDownloadUrl = launcherUpdate ? this.getLauncherDownloadUrl() : null;
+
+        if (launcherUpdate) {
+            console.log(`[UpdateManager] Launcher update available: ${currentVersion} → ${remoteVersions.launcher_version}`);
         }
 
         const instanceUpdate = remoteVersions.instance.version !== localVersions.instance;
@@ -163,12 +208,14 @@ export class UpdateManager {
             remoteVersions.texturepacks.version !== localVersions.texturepacks : false;
 
         console.log('[UpdateManager] Update check result:', {
+            launcherUpdate,
             instanceUpdate,
             librariesUpdate: 'DISABLED (Maven-based)',
             modsUpdate,
             texturepacksUpdate,
-            local: localVersions,
+            local: { launcher: currentVersion, ...localVersions },
             remote: {
+                launcher: remoteVersions.launcher_version,
                 instance: remoteVersions.instance.version,
                 libraries: remoteVersions.libraries?.version ?? 'N/A (Maven-based)',
                 mods: remoteVersions.mods?.version,
@@ -177,6 +224,8 @@ export class UpdateManager {
         });
 
         return {
+            launcherUpdate,
+            launcherDownloadUrl,
             instanceUpdate,
             librariesUpdate,
             modsUpdate,

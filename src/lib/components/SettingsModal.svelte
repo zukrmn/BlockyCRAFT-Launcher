@@ -21,6 +21,7 @@
   let maxMemory = $state(localStorage.getItem("settings.maxMemory") || "2048");
   let javaArgs = $state(localStorage.getItem("settings.javaArgs") || "");
   let borderlessMode = $state(localStorage.getItem("settings.borderlessMode") === "true");
+  let skipUpdate = $state(localStorage.getItem("settings.skipUpdate") === "true");
 
   function openModal() {
     isOpen = true;
@@ -40,6 +41,7 @@
     localStorage.setItem("settings.maxMemory", maxMemory);
     localStorage.setItem("settings.javaArgs", javaArgs);
     localStorage.setItem("settings.borderlessMode", borderlessMode.toString());
+    localStorage.setItem("settings.skipUpdate", skipUpdate.toString());
     closeModal();
   }
 
@@ -209,6 +211,22 @@
                   rows="3"
                 ></textarea>
                 <span class="hint">{i18n.t("settings.javaArgsHint")}</span>
+              </div>
+
+              <!-- Skip Launcher Update -->
+              <div class="setting-group skip-update-setting">
+                <div class="setting-row">
+                  <div class="setting-label-group">
+                    <label>{i18n.t("settings.skipUpdate")}</label>
+                  </div>
+                  <input 
+                    type="checkbox" 
+                    checked={skipUpdate} 
+                    onchange={() => { skipUpdate = !skipUpdate; localStorage.setItem("settings.skipUpdate", skipUpdate.toString()); }}
+                    class="toggle-switch"
+                  />
+                </div>
+                <span class="hint">{i18n.t("settings.skipUpdateHint")}</span>
               </div>
 
           {:else if activeTab === 'mods'}
@@ -776,5 +794,11 @@
     padding: 2px 6px;
     border-radius: 4px;
     letter-spacing: 0.5px;
+  }
+
+  .skip-update-setting {
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--color-border);
   }
 </style>
