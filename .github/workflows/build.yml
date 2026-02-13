@@ -19,7 +19,7 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - run: npm run dist
+      - run: npm run dist -- --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload Linux AppImage only
@@ -37,7 +37,7 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - run: npm run dist
+      - run: npm run dist -- --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload Windows Setup only
@@ -60,7 +60,7 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - run: npm run dist
+      - run: npm run dist -- --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload macOS DMG only
