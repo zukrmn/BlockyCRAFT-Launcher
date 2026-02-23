@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { createWriteStream } from 'fs';
 import AdmZip from 'adm-zip';
+import { downloadFileResilient } from './DownloadUtil.js';
 
 // VPS Configuration - Primary and Fallback URLs for version.json
 const VERSION_JSON_URLS = [
@@ -242,74 +243,14 @@ export class UpdateManager {
         destPath: string,
         progressCallback?: (status: string, percent: number) => void
     ): Promise<void> {
-        const filename = path.basename(destPath);
-        progressCallback?.(`Baixando ${filename}...`, 0);
-
-        // Normalize to array of URLs
         const urls = this.normalizeUrls(urlOrUrls);
-
-        let lastError: Error | null = null;
-
-        for (let i = 0; i < urls.length; i++) {
-            const tryUrl = urls[i];
-            try {
-                console.log(`[UpdateManager] Downloading from URL ${i + 1}/${urls.length}: ${tryUrl}`);
-
-                const response = await fetch(tryUrl, {
-                    signal: AbortSignal.timeout(60000) // 60 second timeout for downloads
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                const total = Number(response.headers.get('content-length')) || 0;
-
-                // Ensure directory exists
-                fs.mkdirSync(path.dirname(destPath), { recursive: true });
-
-                const fileStream = createWriteStream(destPath);
-
-                if (!response.body) {
-                    throw new Error('No response body');
-                }
-
-                const reader = response.body.getReader();
-                let downloaded = 0;
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    fileStream.write(Buffer.from(value));
-                    downloaded += value.length;
-
-                    if (total > 0) {
-                        const percent = Math.round((downloaded / total) * 100);
-                        progressCallback?.(`Baixando ${filename}...`, percent);
-                    }
-                }
-
-                fileStream.end();
-
-                // Wait for file to finish writing
-                await new Promise<void>((resolve, reject) => {
-                    fileStream.on('finish', resolve);
-                    fileStream.on('error', reject);
-                });
-
-                console.log(`[UpdateManager] Downloaded ${filename} (${this.formatSize(downloaded)}) from ${tryUrl}`);
-                return; // Success, exit function
-
-            } catch (e: any) {
-                console.warn(`[UpdateManager] Failed to download from ${tryUrl}:`, e.message);
-                lastError = e;
-                // Continue to next URL
-            }
-        }
-
-        // All URLs failed
-        throw lastError || new Error(`Failed to download ${filename} from all ${urls.length} sources`);
+        await downloadFileResilient({
+            urls,
+            destPath,
+            progressCallback,
+            maxRetries: 7,   // 7 retries for updates
+            timeoutMs: 20000 // 20 seconds inactivity timeout
+        });
     }
 
     /**

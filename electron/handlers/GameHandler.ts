@@ -8,6 +8,7 @@ import { createWriteStream } from 'fs';
 import { JavaManager } from './JavaManager.js';
 import { UpdateManager } from './UpdateManager.js';
 import { Logger } from './Logger.js';
+import { downloadFileResilient } from './DownloadUtil.js';
 import { getOverlayHandler } from '../main.js';
 
 const execAsync = promisify(exec);
@@ -316,36 +317,28 @@ end tell
 
         if (!fs.existsSync(instanceZip)) {
             console.log('instance.zip not found. Attempting to download from VPS...');
-            // We need a sender to show progress, but checkAndExtractInstance doesn't have it passed usually.
-            // For now, we'll log it. Ideally we refactor to pass sender.
-            // Note: Since this is called before typical progress events, we might want to just blocking download.
 
             const vpsUrls = [
                 'https://craft.blocky.com.br/launcher-assets/instance.zip'
             ];
 
-            for (const vpsUrl of vpsUrls) {
-                try {
-                    console.log(`Trying to download instance.zip from ${vpsUrl}...`);
-                    const response = await fetch(vpsUrl, { signal: AbortSignal.timeout(60000) }); // Increased timeout
-                    if (response.ok) {
-                        const arrayBuffer = await response.arrayBuffer();
-                        const buffer = Buffer.from(arrayBuffer);
-
-                        // Validate ZIP magic bytes (PK\x03\x04)
-                        if (buffer.length >= 4 && buffer[0] === 0x50 && buffer[1] === 0x4B) {
-                            fs.writeFileSync(instanceZip, buffer);
-                            console.log('instance.zip downloaded successfully from', vpsUrl);
-                            break; // Success, exit loop
-                        } else {
-                            console.warn(`Downloaded content from ${vpsUrl} is not a valid ZIP (got ${buffer.length} bytes, first bytes: ${buffer.slice(0, 20).toString('hex')})`);
-                            // Continue to next URL
-                        }
-                    }
-                } catch (e) {
-                    console.warn(`Failed to download instance.zip from ${vpsUrl}:`, e);
-                    // Continue to next URL
-                }
+            try {
+                await downloadFileResilient({
+                    urls: vpsUrls,
+                    destPath: instanceZip,
+                    // Note: checkAndExtractInstance doesn't typically have a sender passed directly
+                    // So we don't emit progress events for instance.zip here unless refactored.
+                    // But wait, the update process manages instance.zip later. Actually,
+                    // if it's the first time launch, it might be nice to log to console at least.
+                    progressCallback: (status, percent) => {
+                        console.log(`[GameHandler] instance.zip: ${status} (${percent}%)`);
+                    },
+                    maxRetries: 10,
+                    timeoutMs: 25000 // 25s timeout
+                });
+                console.log('instance.zip downloaded successfully from VPS');
+            } catch (e) {
+                console.warn(`Failed to download instance.zip from VPS:`, e);
             }
         }
 
@@ -359,46 +352,26 @@ end tell
     }
 
     private async downloadFile(url: string, dest: string, filename: string, sender: Electron.WebContents) {
-        this.sendProgress(sender, `Baixando ${filename}...`, 0);
-        // Ensure directory exists
-        fs.mkdirSync(dest, { recursive: true });
         const filePath = path.join(dest, filename);
 
         try {
-
-            // If file exists, skip download (unless invalid size, checked later)
+            // First time check (so we don't even run the downloadFileResilient logic if not needed)
             if (fs.existsSync(filePath)) {
-                return filePath;
-            }
-
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`Failed to download ${url}: ${response.statusText}`);
-
-            const total = Number(response.headers.get('content-length')) || 0;
-            const fileStream = createWriteStream(filePath);
-
-            if (!response.body) throw new Error('No body');
-
-            // @ts-ignore - ReadableStream/Node stream mismatch
-            const reader = response.body.getReader();
-            let downloaded = 0;
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                fileStream.write(Buffer.from(value));
-                downloaded += value.length;
-                if (total > 0) {
-                    this.sendProgress(sender, `Baixando ${filename}`, Math.round((downloaded / total) * 100));
+                // Return if valid, but we actually do jar size validation below
+                const stats = fs.statSync(filePath);
+                if (!(filename.endsWith('.jar') && stats.size < 100)) {
+                    return filePath;
                 }
             }
 
-            // Wait for the file stream to fully close (important for Windows)
-            await new Promise<void>((resolve, reject) => {
-                fileStream.on('finish', resolve);
-                fileStream.on('error', reject);
-                fileStream.end();
+            await downloadFileResilient({
+                urls: [url],
+                destPath: filePath,
+                progressCallback: (status, percent) => {
+                    this.sendProgress(sender, status, percent);
+                },
+                maxRetries: 5,
+                timeoutMs: 20000
             });
 
             // Validate file size for jars (sanity check)
