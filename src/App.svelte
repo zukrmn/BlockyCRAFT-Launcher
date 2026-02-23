@@ -47,11 +47,38 @@
     if (statusMap[status]) {
       return i18n.t(statusMap[status]);
     }
-    // Check for "Baixando X..." pattern (downloading files)
-    if (status.startsWith("Baixando ")) {
-      const filename = status.replace("Baixando ", "").replace("...", "");
-      return `${i18n.t("status.downloading")} ${filename}...`;
+
+    // Check for detailed format: Baixando filename 10 MB/20 MB 1m 20s
+    // DownloadUtil formats it like: `Baixando ${filename} ${formatSize(downloaded)}/${formatSize(total)} ${timeStr}`
+    const detailedMatch = status.match(/^Baixando (.*?) ([\d.]+ [A-Za-z]+\/[\d.]+ [A-Za-z]+) (.*)$/);
+    if (detailedMatch) {
+      const [_, filename, sizeStr, timeStr] = detailedMatch;
+      
+      let translatedTime = timeStr
+        .replace('m', i18n.t('time.min'))
+        .replace('s', i18n.t('time.sec'));
+          
+      const format = i18n.t('status.downloadingDetailed');
+      if (format !== 'status.downloadingDetailed') {
+        return format
+          .replace('{filename}', filename)
+          .replace('{size}', sizeStr)
+          .replace('{time}', translatedTime);
+      }
+      return `${i18n.t("status.downloading")} ${filename} ${sizeStr} - ${translatedTime}`;
     }
+
+    // Check for "Baixando X..." pattern (downloading files with no total or before details kick in)
+    if (status.startsWith("Baixando ")) {
+      const remaining = status.replace("Baixando ", "").replace("...", "");
+      // Handles cases like "Baixando filename (10 KB)..."
+      const parenthesizedMatch = remaining.match(/^(.*?) \((.*?)\)$/);
+      if (parenthesizedMatch) {
+         return `${i18n.t("status.downloading")} ${parenthesizedMatch[1]} (${parenthesizedMatch[2]})...`;
+      }
+      return `${i18n.t("status.downloading")} ${remaining}...`;
+    }
+    
     // Return original if no translation found
     return status;
   }

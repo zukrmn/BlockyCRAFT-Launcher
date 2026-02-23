@@ -97,6 +97,9 @@ export async function downloadFileResilient(options: DownloadOptions): Promise<v
 
                 const reader = response.body.getReader();
 
+                const startTime = Date.now();
+                let lastReportTime = 0;
+
                 let readPromise: Promise<any>;
                 let readDone = false;
 
@@ -132,9 +135,34 @@ export async function downloadFileResilient(options: DownloadOptions): Promise<v
 
                         if (total > 0) {
                             const percent = Math.round((downloaded / total) * 100);
-                            progressCallback?.(`Baixando ${filename}...`, percent);
+
+                            const now = Date.now();
+                            if (now - lastReportTime > 250 || downloaded === total) {
+                                lastReportTime = now;
+
+                                const elapsedSec = Math.max(0.1, (now - startTime) / 1000);
+                                const bytesPerSec = downloaded / elapsedSec;
+                                const remainingBytes = Math.max(0, total - downloaded);
+                                const remainingSec = Math.round(remainingBytes / bytesPerSec);
+
+                                let timeStr = '';
+                                if (remainingSec >= 60) {
+                                    const m = Math.floor(remainingSec / 60);
+                                    const s = remainingSec % 60;
+                                    timeStr = `${m}m ${s}s`;
+                                } else {
+                                    timeStr = `${remainingSec}s`;
+                                }
+
+                                const msg = `Baixando ${filename} ${formatSize(downloaded)}/${formatSize(total)} ${timeStr}`;
+                                progressCallback?.(msg, percent);
+                            }
                         } else {
-                            progressCallback?.(`Baixando ${filename} (${formatSize(downloaded)})...`, 0);
+                            const now = Date.now();
+                            if (now - lastReportTime > 250) {
+                                lastReportTime = now;
+                                progressCallback?.(`Baixando ${filename} (${formatSize(downloaded)})...`, 0);
+                            }
                         }
 
                     } catch (readErr: any) {
