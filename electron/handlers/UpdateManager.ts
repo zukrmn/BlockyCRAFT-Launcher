@@ -373,22 +373,34 @@ export class UpdateManager {
             // 1. Backup User Data
             this.backupUserData();
 
-            // 2. Clear old instance
-            // We can now safely clear everything since we have a backup
+            // 2. Clear old instance jars
+            // Instead of deleting the whole .minecraft folder (which would wipe configs),
+            // we specifically target and delete old .jar files in the mods directory.
+            // This ensures that when the new instance is extracted, old obsolete mods
+            // do not cause conflicts, whilst preserving player configs and settings.
             if (fs.existsSync(this.instanceDir)) {
-                // Try to keep libraries if possible to save bandwidth, but for simplicity
-                // and robustness, let's trust the backup. 
-                // Actually, libraries are separate now or inside?
-                // In this codebase, libraries are in instanceDir/libraries.
-                // We should NOT delete libraries if possible, or we rely on Maven.
-                // Ideally, we only clear .minecraft and other config files.
-                // But cleaning the whole dir ensures no leftover junk.
-                // Given we don't backup libraries (they are re-downloaded/checked), 
-                // we might want to check if we should preserve them.
-                // But wait, updateLibraries is effectively disabled/Maven based.
-                // So re-downloading them is fine/expected if missing.
+                const modsDir = path.join(this.instanceDir, '.minecraft', 'mods');
+                if (fs.existsSync(modsDir)) {
+                    progressCallback?.('Limpando mods antigos...', 10);
+                    
+                    const cleanJarsInDir = (dirPath: string) => {
+                        if (!fs.existsSync(dirPath)) return;
+                        try {
+                            const files = fs.readdirSync(dirPath);
+                            for (const file of files) {
+                                if (file.endsWith('.jar')) {
+                                    fs.unlinkSync(path.join(dirPath, file));
+                                }
+                            }
+                        } catch (e) {
+                            console.warn(`[UpdateManager] Failed to clean jars in ${dirPath}:`, e);
+                        }
+                    };
 
-                // However, let's just clear .minecraft mostly.
+                    // Clean active mods and disabled mods
+                    cleanJarsInDir(modsDir);
+                    cleanJarsInDir(path.join(modsDir, 'disabled'));
+                }
             }
 
             // Extract
