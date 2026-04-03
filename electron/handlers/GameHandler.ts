@@ -459,9 +459,27 @@ end tell
             if (!options.username) throw new Error('Username required');
 
             // Ensure Java is available (auto-download if needed)
+            // IMPORTANT: Babric/Mixin requires Java 17-21. Java 22+ (especially 25)
+            // breaks Mixin's classloader and causes ClassNotFoundException on core JDK classes.
             this.sendProgress(event.sender, 'Verificando Java...', 5);
             try {
                 this.javaPath = options.javaPath || await this.javaManager.ensureJava(event.sender);
+
+                // Validate the resolved Java version is compatible
+                const javaVersion = await this.javaManager.getJavaMajorVersion(this.javaPath);
+                console.log(`[GameHandler] Resolved Java: ${this.javaPath} (version ${javaVersion})`);
+
+                if (javaVersion !== null && !(await this.javaManager.isValidJava17(this.javaPath))) {
+                    console.warn(`[GameHandler] Java ${javaVersion} is not compatible (requires 17-21). Falling back to managed Java...`);
+                    this.sendProgress(event.sender, `Java ${javaVersion} incompatível, baixando Java 17...`, 6);
+                    this.javaPath = await this.javaManager.ensureJava(event.sender);
+
+                    // If ensureJava still returned the incompatible system Java, force download
+                    if (!(await this.javaManager.isValidJava17(this.javaPath))) {
+                        console.warn(`[GameHandler] System Java still incompatible, forcing download...`);
+                        this.javaPath = await this.javaManager.forceDownloadJava(event.sender);
+                    }
+                }
             } catch (e: any) {
                 throw new Error('Falha ao configurar Java: ' + e.message);
             }

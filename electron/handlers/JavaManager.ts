@@ -8,6 +8,12 @@ import AdmZip from 'adm-zip';
 
 const execAsync = promisify(exec);
 
+// Compatible Java version range for Babric/Mixin on Beta 1.7.3
+// Java 17 is the target; 18-21 are generally compatible.
+// Java 22+ introduces breaking module/classloader changes that crash Mixin.
+const JAVA_MIN_VERSION = 17;
+const JAVA_MAX_VERSION = 21;
+
 // Adoptium API base URL for Eclipse Temurin
 const ADOPTIUM_API_BASE = 'https://api.adoptium.net/v3/binary/latest';
 const JAVA_VERSION = '17';
@@ -71,9 +77,12 @@ export class JavaManager {
 
     /**
      * Returns common Java installation paths based on OS.
+     * IMPORTANT: Specific Java 17 paths are checked FIRST, before the generic
+     * 'java' in PATH, to avoid accidentally using an incompatible newer version
+     * (e.g. Java 25) that happens to be the system default.
      */
     private getCommonJavaPaths(): string[] {
-        const paths: string[] = ['java']; // Try PATH first
+        const specificPaths: string[] = [];
         
         const platform = process.platform;
         
@@ -81,25 +90,31 @@ export class JavaManager {
             const programFiles = process.env['ProgramFiles'] || 'C:\\Program Files';
             const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
             
-            // Common Windows Java locations
-            paths.push(
+            // Common Windows Java 17 locations
+            // Resolve glob patterns to actual paths
+            const winGlobPatterns = [
                 path.join(programFiles, 'Eclipse Adoptium', 'jdk-17*', 'bin', 'java.exe'),
                 path.join(programFiles, 'Java', 'jdk-17*', 'bin', 'java.exe'),
                 path.join(programFiles, 'Java', 'jre-17*', 'bin', 'java.exe'),
                 path.join(programFiles, 'Temurin', 'jdk-17*', 'bin', 'java.exe'),
                 path.join(programFilesX86, 'Java', 'jdk-17*', 'bin', 'java.exe'),
-            );
+            ];
+            
+            for (const pattern of winGlobPatterns) {
+                const resolved = this.resolveGlobPaths(pattern);
+                specificPaths.push(...resolved);
+            }
         } else if (platform === 'darwin') {
-            // macOS Java locations
-            paths.push(
+            // macOS Java 17 locations
+            specificPaths.push(
                 '/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home/bin/java',
                 '/Library/Java/JavaVirtualMachines/adoptopenjdk-17.jdk/Contents/Home/bin/java',
                 '/usr/local/opt/openjdk@17/bin/java',
                 '/opt/homebrew/opt/openjdk@17/bin/java',
             );
         } else {
-            // Linux Java locations
-            paths.push(
+            // Linux Java 17 locations
+            specificPaths.push(
                 '/usr/lib/jvm/temurin-17-jdk/bin/java',
                 '/usr/lib/jvm/java-17-openjdk/bin/java',
                 '/usr/lib/jvm/java-17-openjdk-amd64/bin/java',
@@ -108,27 +123,74 @@ export class JavaManager {
             );
         }
         
-        return paths;
+        // Specific Java 17 paths first, then generic PATH as fallback
+        return [...specificPaths, 'java'];
     }
 
     /**
-     * Checks if the given Java path is valid and is Java 17+.
+     * Resolves glob patterns (e.g. jdk-17*) to actual file paths on disk.
+     * Used for Windows where JDK directories have version suffixes like jdk-17.0.12.
      */
-    private async isValidJava17(javaPath: string): Promise<boolean> {
+    private resolveGlobPaths(pattern: string): string[] {
+        try {
+            // Split at the glob wildcard
+            const globIndex = pattern.indexOf('*');
+            if (globIndex === -1) return [pattern];
+            
+            // Get the parent directory (before the wildcard segment)
+            const beforeGlob = pattern.substring(0, globIndex);
+            const parentDir = path.dirname(beforeGlob);
+            const prefix = path.basename(beforeGlob); // e.g. "jdk-17"
+            const afterGlob = pattern.substring(globIndex + 1); // e.g. "\bin\java.exe"
+            
+            if (!fs.existsSync(parentDir)) return [];
+            
+            const entries = fs.readdirSync(parentDir);
+            const matches: string[] = [];
+            
+            for (const entry of entries) {
+                if (entry.startsWith(prefix)) {
+                    const fullPath = path.join(parentDir, entry) + afterGlob;
+                    if (fs.existsSync(fullPath)) {
+                        matches.push(fullPath);
+                    }
+                }
+            }
+            
+            return matches;
+        } catch {
+            return [];
+        }
+    }
+
+    /**
+     * Checks if the given Java path is valid and within the compatible version range.
+     * Babric/Mixin for Beta 1.7.3 requires Java 17-21.
+     * Java 22+ (especially 25) breaks Mixin's classloader with module access changes.
+     */
+    public async isValidJava17(javaPath: string): Promise<boolean> {
+        const version = await this.getJavaMajorVersion(javaPath);
+        if (version === null) return false;
+        return version >= JAVA_MIN_VERSION && version <= JAVA_MAX_VERSION;
+    }
+
+    /**
+     * Gets the major version number of a Java installation.
+     * Returns null if the path is invalid or version cannot be determined.
+     */
+    public async getJavaMajorVersion(javaPath: string): Promise<number | null> {
         try {
             const { stdout, stderr } = await execAsync(`"${javaPath}" -version`);
             const output = stdout + stderr; // Java writes version to stderr
             
-            // Check for version 17 or higher
             const versionMatch = output.match(/version "(\d+)/);
             if (versionMatch) {
-                const majorVersion = parseInt(versionMatch[1], 10);
-                return majorVersion >= 17;
+                return parseInt(versionMatch[1], 10);
             }
             
-            return false;
+            return null;
         } catch {
-            return false;
+            return null;
         }
     }
 
@@ -218,6 +280,15 @@ export class JavaManager {
         }
         
         return null;
+    }
+
+    /**
+     * Forces download and installation of Java 17 JRE, bypassing system detection.
+     * Used as a last resort when the system Java is incompatible (e.g. Java 25).
+     */
+    public async forceDownloadJava(sender?: Electron.WebContents): Promise<string> {
+        console.log('[JavaManager] Force downloading Java 17 (system Java incompatible)...');
+        return this.downloadAndInstallJava(sender);
     }
 
     /**
