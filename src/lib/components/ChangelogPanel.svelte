@@ -82,7 +82,7 @@
     border-radius: var(--radius-lg);
     padding: var(--spacing-lg);
     height: 100%;
-    overflow-y: auto;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
   }
@@ -102,6 +102,7 @@
     flex: 1;
     overflow-y: auto; /* Scrollable content area */
     padding-right: 8px; /* Room for scrollbar */
+    min-height: 0;
   }
 
   .loading {

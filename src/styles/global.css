@@ -8,11 +8,14 @@
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  overflow: hidden; /* App-like feel */
-  user-select: none; /* Prevent selection like an app */
+  overflow: hidden;
+  /* App-like feel */
+  user-select: none;
+  /* Prevent selection like an app */
 }
 
-input, button {
+input,
+button {
   font-family: inherit;
 }
 
