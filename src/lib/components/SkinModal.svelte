@@ -984,7 +984,7 @@
   .prompt-header h3 {
     margin: 0;
     font-size: 0.8rem;
-    color: var(--color-text-muted);
+    color: var(--color-text-main);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
