@@ -9,6 +9,7 @@ export const translations: Record<string, Record<string, string>> = {
         "ui.settings": "Settings",
         "ui.cancel": "Cancel",
         "ui.save": "Save",
+        "ui.confirm": "Confirm",
         "settings.minMemory": "Minimum Memory",
         "settings.maxMemory": "Maximum Memory",
         "settings.javaArgs": "Java Arguments",
@@ -83,7 +84,11 @@ export const translations: Record<string, Record<string, string>> = {
         "skin.uploading": "Uploading to Imgur...",
         "skin.invalid_password": "Invalid password",
         "skin.too_many_attempts": "Too many attempts. Try again in {time}.",
-        "skin.cooldown": "Wait {time} to change skin again."
+        "skin.cooldown": "Wait {time} to change skin again.",
+        "skin.slot_limit": "Limit of 5 skins reached. Remove one to add a new one.",
+        "skin.slot_saved": "Skin saved to slots!",
+        "skin.slot_save_current": "Save to Slot",
+        "ui.change": "Change"
     },
     "pt-BR": {
         "ui.donate": "Doar",
@@ -95,6 +100,7 @@ export const translations: Record<string, Record<string, string>> = {
         "ui.settings": "Configurações",
         "ui.cancel": "Cancelar",
         "ui.save": "Salvar",
+        "ui.confirm": "Confirmar",
         "settings.minMemory": "Memória Mínima",
         "settings.maxMemory": "Memória Máxima",
         "settings.javaArgs": "Argumentos Java",
@@ -169,7 +175,11 @@ export const translations: Record<string, Record<string, string>> = {
         "skin.uploading": "Enviando para o Imgur...",
         "skin.invalid_password": "Senha inválida",
         "skin.too_many_attempts": "Muitas tentativas. Tente novamente em {time}.",
-        "skin.cooldown": "Aguarde {time} para trocar de skin novamente."
+        "skin.cooldown": "Aguarde {time} para trocar de skin novamente.",
+        "skin.slot_limit": "Limite de 5 skins atingido. Remova uma para adicionar nova.",
+        "skin.slot_saved": "Skin salva nos slots!",
+        "skin.slot_save_current": "Salvar no Slot",
+        "ui.change": "Alterar"
     },
     "es-ES": {
         "ui.donate": "Donar",
@@ -181,6 +191,7 @@ export const translations: Record<string, Record<string, string>> = {
         "ui.settings": "Configuración",
         "ui.cancel": "Cancelar",
         "ui.save": "Guardar",
+        "ui.confirm": "Confirmar",
         "settings.minMemory": "Memoria Mínima",
         "settings.maxMemory": "Memoria Máxima",
         "settings.javaArgs": "Argumentos Java",
@@ -255,7 +266,11 @@ export const translations: Record<string, Record<string, string>> = {
         "skin.uploading": "Subiendo a Imgur...",
         "skin.invalid_password": "Contraseña inválida",
         "skin.too_many_attempts": "Demasiados intentos. Inténtelo de nuevo en {time}.",
-        "skin.cooldown": "Espere {time} para cambiar de skin de nuevo."
+        "skin.cooldown": "Espere {time} para cambiar de skin de nuevo.",
+        "skin.slot_limit": "Límite de 5 skins alcanzado. Elimina una para añadir nueva.",
+        "skin.slot_saved": "¡Skin guardada en los slots!",
+        "skin.slot_save_current": "Guardar en Slot",
+        "ui.change": "Cambiar"
     }
 };
 

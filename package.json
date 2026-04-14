@@ -95,6 +95,7 @@
   },
   "dependencies": {
     "adm-zip": "^0.5.16",
-    "marked": "^17.0.1"
+    "marked": "^17.0.1",
+    "skinview3d": "^3.4.1"
   }
 }
