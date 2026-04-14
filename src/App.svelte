@@ -8,6 +8,7 @@
   import SettingsModal from "./lib/components/SettingsModal.svelte";
   import TutorialButton from "./lib/components/TutorialButton.svelte";
   import AppearanceModal from "./lib/components/AppearanceModal.svelte";
+  import SkinModal from "./lib/components/SkinModal.svelte";
   import { i18n } from "./lib/stores/i18n.svelte";
   import { donatorsStore } from "./lib/stores/donators.svelte";
   import "./styles/theme.css";
@@ -164,6 +165,7 @@
     <!-- Right: Donators + Language -->
     <div class="right-column">
       <div class="lang-area">
+        <SkinModal {username} />
         <AppearanceModal bind:this={appearanceModalRef} {username} />
         <LanguageToggle />
         <SettingsModal />

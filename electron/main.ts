@@ -69,16 +69,29 @@ function createWindow(): void {
     });
 
     // Proxy fetch requests to bypass CORS
-    ipcMain.handle('fetch-url', async (event, url) => {
-        Logger.info('Main', `Proxying fetch request to: ${url}`);
+    ipcMain.handle('fetch-url', async (event, args: string | { url: string; method?: string; body?: string }) => {
+        const isLegacy = typeof args === 'string';
+        const url = isLegacy ? args : args.url;
+        const method = isLegacy ? 'GET' : (args.method || 'GET');
+        const body = isLegacy ? undefined : args.body;
+        
+        Logger.info('Main', `Proxying fetch request [${method}] to: ${url}`);
+        
         const { net } = await import('electron');
         try {
-            const response = await net.fetch(url);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status} ${response.statusText}`);
-            }
+            const response = await net.fetch(url, {
+                method,
+                body,
+                headers: body ? { 'Content-Type': 'application/json' } : {}
+            });
+            
             const text = await response.text();
-            return { success: true, data: text };
+            return { 
+                success: response.ok, 
+                status: response.status,
+                data: text,
+                error: response.ok ? undefined : `HTTP ${response.status} ${response.statusText}`
+            };
         } catch (e: any) {
             Logger.error('Main', `Fetch failed for ${url}: ${e.message}`);
             return { success: false, error: e.message };
