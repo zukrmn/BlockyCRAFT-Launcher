@@ -52,20 +52,18 @@
 
   .input {
     width: 100%;
-    padding: 1rem 1.25rem;
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--border-glass);
+    padding: 10px 12px;
+    background: var(--color-bg-input);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     color: white;
-    font-size: 1rem;
+    font-size: 0.95rem;
     outline: none;
     transition: all var(--transition-fast);
   }
 
   .input:focus {
-    border-color: var(--color-emerald);
-    background: rgba(0, 0, 0, 0.5);
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    border-color: white;
   }
 
   .input::placeholder {

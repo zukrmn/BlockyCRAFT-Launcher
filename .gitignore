@@ -36,10 +36,7 @@ temp_natives/
 temp_extract/
 core
 
-# Log
-LOG.md  
-DEBUG.md
-PROMPT.md
+.md/*
 
 # Dist out
 dist-out/
