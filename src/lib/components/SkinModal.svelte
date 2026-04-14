@@ -104,8 +104,8 @@
 
     skinViewer = new SkinViewer({
       canvas: canvasRef,
-      width: 250,
-      height: 300,
+      width: 200,
+      height: 260,
       skin: visualizerSkin.base64 || visualizerSkin.url || "https://mineskin.org/skins/steve"
     });
 
@@ -684,8 +684,8 @@
   }
 
   .viewer-container {
-    width: 250px;
-    height: 300px;
+    width: 200px;
+    height: 260px;
     flex-shrink: 0;
     border-radius: var(--radius-lg);
     overflow: hidden;
@@ -744,7 +744,7 @@
 
   .skin-slot {
     width: 100%;
-    height: 48px;
+    height: 40px;
     border-radius: var(--radius-md);
     background: var(--color-bg-card);
     border: 1px solid var(--color-border);
