@@ -28,6 +28,10 @@
   // 3D Viewer State
   let canvasRef = $state<HTMLCanvasElement>();
   let skinViewer: SkinViewer | undefined;
+  
+  // Drag detection for rotation vs click
+  let mouseStartX = 0;
+  let mouseStartY = 0;
 
   interface SavedSkin {
     id: string;
@@ -224,6 +228,21 @@
   function triggerFileSelect(target: 'main' | number) {
     fileTarget = target;
     fileInputRef?.click();
+  }
+
+  function handleViewerMouseDown(e: MouseEvent) {
+    mouseStartX = e.clientX;
+    mouseStartY = e.clientY;
+  }
+
+  function handleViewerClick(e: MouseEvent) {
+    const deltaX = Math.abs(e.clientX - mouseStartX);
+    const deltaY = Math.abs(e.clientY - mouseStartY);
+    
+    // Threshold of 5 pixels to distinguish click from rotation drag
+    if (deltaX < 5 && deltaY < 5) {
+      triggerFileSelect('main');
+    }
   }
 
   function handleFileSelect(e: Event) {
@@ -431,7 +450,12 @@
             <div class="skin-uploader">
               <!-- svelte-ignore a11y_click_events_have_key_events -->
               <!-- svelte-ignore a11y_no_static_element_interactions -->
-              <div class="viewer-container" onclick={() => triggerFileSelect('main')} title={i18n.t("appearance.background_select")}>
+              <div 
+                class="viewer-container" 
+                onmousedown={handleViewerMouseDown}
+                onclick={handleViewerClick} 
+                title={i18n.t("appearance.background_select")}
+              >
                 <canvas bind:this={canvasRef} class="skin-canvas"></canvas>
                 <div class="viewer-overlay">
                   <span class="icon-small">{@html Icons.Image}</span>
