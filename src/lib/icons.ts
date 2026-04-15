@@ -113,6 +113,14 @@ export const Icons = {
   User: `<svg ${ICON_ATTRS}>
     <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
     <circle cx="12" cy="7" r="4"/>
+  </svg>`,
+
+  /**
+   * Plus icon - used in SkinModal.svelte (add slot)
+   */
+  Plus: `<svg ${ICON_ATTRS}>
+    <path d="M12 5v14"/>
+    <path d="M5 12h14"/>
   </svg>`
 } as const;
 

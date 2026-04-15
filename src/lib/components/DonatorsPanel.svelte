@@ -2,6 +2,7 @@
   import { i18n } from "../stores/i18n.svelte";
   import { ElectronService } from "../electron";
   import { donatorsStore } from "../stores/donators.svelte";
+  import PlayerAvatar from "./PlayerAvatar.svelte";
 
   let donators = $state<{ name: string }[]>([]);
   let isLoading = $state(true);
@@ -56,11 +57,7 @@
         {#each donators as donor}
         <!-- Converting div to button for accessibility and interaction -->
         <button class="donor-item" title={donor.name} onclick={() => openScoreboard(donor.name)}>
-            <img 
-            src="https://minotar.net/avatar/{donor.name}/64" 
-            alt={donor.name}
-            loading="lazy"
-            />
+            <PlayerAvatar username={donor.name} size={48} alt={donor.name} />
             <span class="donor-name">{donor.name}</span>
         </button>
         {/each}
