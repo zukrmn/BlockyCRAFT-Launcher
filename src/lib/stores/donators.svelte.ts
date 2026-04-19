@@ -4,15 +4,24 @@
  */
 
 let donatorsList = $state<string[]>([]);
+let refreshCount = $state(0);
 
 export const donatorsStore = {
     get list() { return donatorsList; },
+    get refreshCount() { return refreshCount; },
 
     /**
      * Set the list of donator usernames
      */
     set(names: string[]) {
         donatorsList = names;
+    },
+
+    /**
+     * Trigger a refresh of all components depending on donators data
+     */
+    refresh() {
+        refreshCount++;
     },
 
     /**

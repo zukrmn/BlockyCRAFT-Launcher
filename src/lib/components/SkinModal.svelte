@@ -3,6 +3,7 @@
   import { Icons } from "../icons";
   import { i18n } from "../stores/i18n.svelte";
   import TextInput from "./TextInput.svelte";
+  import { donatorsStore } from "../stores/donators.svelte";
   import { SkinViewer } from "skinview3d";
 
   // Props
@@ -383,10 +384,10 @@
         successMessage = i18n.t("skin.save_success");
         password = "";
         selectedFile = null;
+        donatorsStore.refresh();
         
         setTimeout(() => {
           isPasswordPromptOpen = false;
-          if (isOpen) closeModal();
         }, 2000);
       } else {
         let errorMsg = i18n.t("skin.save_error");
@@ -881,8 +882,7 @@
   }
 
   .message {
-    padding: var(--spacing-sm);
-    border-radius: var(--radius-sm);
+    padding: var(--spacing-xs) 0;
     font-size: 0.9rem;
     text-align: center;
     animation: fadeIn 0.3s ease;
@@ -894,15 +894,11 @@
   }
 
   .message.error {
-    background: rgba(239, 68, 68, 0.1);
     color: #f87171;
-    border: 1px solid rgba(239, 68, 68, 0.2);
   }
 
   .message.success {
-    background: rgba(34, 197, 94, 0.1);
     color: #4ade80;
-    border: 1px solid rgba(34, 197, 94, 0.2);
   }
 
   .message.loading {

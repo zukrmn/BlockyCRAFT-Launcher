@@ -39,6 +39,7 @@
   }
 
   $effect(() => {
+    donatorsStore.refreshCount;
     fetchDonators();
   });
 

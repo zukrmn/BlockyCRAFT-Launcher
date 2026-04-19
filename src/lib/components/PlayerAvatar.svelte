@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { donatorsStore } from "../stores/donators.svelte";
   interface Props {
     username: string;
     size?: number;
@@ -12,8 +13,8 @@
   let isLoading = $state(true);
 
   // URLs
-  const internalUrl = $derived(`https://talk.craft.blocky.com.br/api/v1/profile/${username}.png`);
-  const minotarUrl = $derived(`https://minotar.net/avatar/${username}/${size}`);
+  const internalUrl = $derived(`https://talk.craft.blocky.com.br/api/v1/profile/${username}.png?v=${donatorsStore.refreshCount}`);
+  const minotarUrl = $derived(`https://minotar.net/avatar/${username}/${size}?v=${donatorsStore.refreshCount}`);
   
   // State management for loading
   function handleInternalLoad() {
