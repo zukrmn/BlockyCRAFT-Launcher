@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 
 // Available hotkeys for user selection
-const AVAILABLE_HOTKEYS = ['F6', 'Shift+Tab', 'CommandOrControl+Tab'];
+const AVAILABLE_HOTKEYS = ['Shift+Tab', 'CommandOrControl+Tab'];
 
 /**
  * Handles the in-game browser overlay functionality.
@@ -72,8 +72,10 @@ export class OverlayHandler {
      * Get platform-specific default hotkey
      */
     private getDefaultHotkey(): string {
-        // Linux has issues with Shift+Tab in many window managers
-        return process.platform === 'linux' ? 'F6' : 'Shift+Tab';
+        if (process.platform === 'darwin') {
+            return 'CommandOrControl+Tab';
+        }
+        return 'Shift+Tab';
     }
 
     /**
