@@ -1,5 +1,9 @@
 import { app, BrowserWindow, ipcMain, globalShortcut } from 'electron';
 import path from 'node:path';
+import dns from 'node:dns';
+
+// Prefer IPv4 to avoid connectivity issues on networks with broken IPv6
+dns.setDefaultResultOrder('ipv4first');
 
 // Add command line switches before app is ready
 app.commandLine.appendSwitch('no-sandbox');

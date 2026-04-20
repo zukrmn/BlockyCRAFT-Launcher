@@ -5,6 +5,7 @@ import { createWriteStream } from 'fs';
 import { spawn } from 'child_process';
 import AdmZip from 'adm-zip';
 import { downloadFileResilient } from './DownloadUtil.js';
+import { fetchJsonWithRetry } from './NetworkUtil.js';
 
 // VPS Configuration - Primary and Fallback URLs for version.json
 const VERSION_JSON_URLS = [
@@ -120,15 +121,10 @@ export class UpdateManager {
         for (const url of VERSION_JSON_URLS) {
             try {
                 console.log('[UpdateManager] Trying to fetch versions from:', url);
-                const response = await fetch(url, {
-                    signal: AbortSignal.timeout(10000) // 10 second timeout
+                const data = await fetchJsonWithRetry<RemoteVersionInfo>(url, { 
+                    timeoutMs: 10000, 
+                    maxRetries: 2 
                 });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                const data = await response.json() as RemoteVersionInfo;
                 console.log('[UpdateManager] Successfully fetched from:', url);
                 console.log('[UpdateManager] Remote versions:', data);
 
