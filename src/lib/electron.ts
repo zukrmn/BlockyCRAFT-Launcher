@@ -43,6 +43,11 @@ export const ElectronService = {
         return electron.invoke('perform-update', null);
     },
 
+    async installLauncherUpdate(url: string): Promise<{ success: boolean; error?: string }> {
+        if (!electron) return { success: false, error: 'Electron not available' };
+        return electron.invoke('install-launcher-update', url) as Promise<{ success: boolean; error?: string }>;
+    },
+
     async openExternal(url: string): Promise<void> {
         if (!electron) {
             console.warn('[Mock] openExternal called with:', url);

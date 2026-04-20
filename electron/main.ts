@@ -12,13 +12,9 @@ import { OverlayHandler } from './handlers/OverlayHandler.js';
 
 // Initialize logger as early as possible (after imports)
 // Note: Full init happens in app.whenReady() when userData is available
-const gameHandler = new GameHandler();
-gameHandler.init();
-
-const modHandler = new ModHandler();
-modHandler.init();
-
-// Overlay handler is initialized in app.whenReady() since it needs screen API
+// Handlers (initialized in app.whenReady())
+let gameHandler: GameHandler | null = null;
+let modHandler: ModHandler | null = null;
 let overlayHandler: OverlayHandler | null = null;
 
 // Export overlayHandler for use in GameHandler
@@ -140,6 +136,13 @@ app.whenReady().then(() => {
     Logger.info('Main', `Electron version: ${process.versions.electron}`);
     Logger.info('Main', `Node version: ${process.versions.node}`);
     Logger.info('Main', `Platform: ${process.platform} ${process.arch}`);
+
+    // Initialize handlers
+    gameHandler = new GameHandler();
+    gameHandler.init();
+
+    modHandler = new ModHandler();
+    modHandler.init();
 
     // Initialize overlay handler (needs screen API which is ready now)
     overlayHandler = new OverlayHandler();

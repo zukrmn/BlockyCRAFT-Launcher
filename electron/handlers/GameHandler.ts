@@ -151,6 +151,12 @@ export class GameHandler {
         ipcMain.handle('perform-update', async (event) => {
             return this.handlePerformUpdate(event);
         });
+
+        ipcMain.handle('install-launcher-update', async (event, url: string) => {
+            return this.updateManager.installLauncherUpdate(url, (status, percent) => {
+                this.sendProgress(event.sender, status, percent);
+            });
+        });
     }
 
     private sendProgress(sender: Electron.WebContents, status: string, progress: number) {

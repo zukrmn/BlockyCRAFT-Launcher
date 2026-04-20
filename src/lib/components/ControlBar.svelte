@@ -10,15 +10,18 @@
     launcherUpdateAvailable = false,
     launcherDownloadUrl = "",
     handleLaunch,
-    handleClose
+    handleClose,
+    handleUpdate
   } = $props();
 
   async function handleDonate() {
     await ElectronService.openExternal("https://craft.blocky.com.br/donate/");
   }
 
-  async function handleUpdate() {
-    if (launcherDownloadUrl) {
+  async function onUpdateClick() {
+    if (handleUpdate) {
+      handleUpdate();
+    } else if (launcherDownloadUrl) {
       await ElectronService.openExternal(launcherDownloadUrl);
     }
   }
@@ -26,7 +29,7 @@
   function onKey(e: KeyboardEvent) {
     if (e.key === "Enter" && username.trim()) {
       if (launcherUpdateAvailable) {
-        handleUpdate();
+        onUpdateClick();
       } else {
         handleLaunch();
       }
@@ -63,7 +66,7 @@
   {:else if launcherUpdateAvailable}
     <button
       class="btn-update"
-      onclick={handleUpdate}
+      onclick={onUpdateClick}
     >
       {i18n.t("ui.update")}
     </button>

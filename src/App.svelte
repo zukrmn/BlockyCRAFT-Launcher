@@ -41,6 +41,9 @@
     "Configurando Fabric/StationAPI...": "status.configuringFabric",
     "Iniciando Jogo...": "status.startingGame",
     "Textura atualizada!": "status.textureUpdated",
+    "Baixando atualização do launcher...": "status.updatingLauncher",
+    "Instalando atualização...": "status.updatingLauncher",
+    "Reiniciando...": "status.startingGame",
   };
 
   function translateStatus(status: string): string {
@@ -128,6 +131,25 @@
     }
   }
 
+  async function handleLauncherUpdate() {
+    if (!launcherDownloadUrl) return;
+
+    if (ElectronService.getPlatform() === "linux") {
+      isLaunching = true;
+      launchStatus = i18n.t("status.updatingLauncher");
+      launchProgress = 0;
+      maxProgress = 0;
+
+      const result = await ElectronService.installLauncherUpdate(launcherDownloadUrl);
+      if (!result.success) {
+        isLaunching = false;
+        alert(i18n.t("status.error") + result.error);
+      }
+    } else {
+      await ElectronService.openExternal(launcherDownloadUrl);
+    }
+  }
+
   // Listen for game events
   $effect(() => {
     ElectronService.onGameConnected(() => {
@@ -194,6 +216,7 @@
       {isGameRunning}
       {handleLaunch}
       handleClose={ElectronService.killGame}
+      handleUpdate={handleLauncherUpdate}
       launcherUpdateAvailable={launcherUpdateAvailable && !skipUpdateEnabled}
       {launcherDownloadUrl}
     />

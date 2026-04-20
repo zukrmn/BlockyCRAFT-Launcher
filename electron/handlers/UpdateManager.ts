@@ -2,6 +2,7 @@ import { app } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { createWriteStream } from 'fs';
+import { spawn } from 'child_process';
 import AdmZip from 'adm-zip';
 import { downloadFileResilient } from './DownloadUtil.js';
 
@@ -63,6 +64,9 @@ export class UpdateManager {
         this.localVersionsPath = path.join(this.dataPath, 'versions.json');
         this.instanceDir = path.join(this.dataPath, 'instances', 'default');
         this.librariesDir = path.join(this.instanceDir, 'libraries');
+
+        // Cleanup old AppImages from previous updates
+        this.cleanupOldAppImages();
     }
 
     /**
@@ -691,6 +695,103 @@ export class UpdateManager {
         } catch (e: any) {
             console.error('[UpdateManager] Update failed:', e);
             return { success: false, error: e.message };
+        }
+    }
+
+    /**
+     * Installs launcher update for Linux AppImage
+     */
+    public async installLauncherUpdate(
+        url: string,
+        progressCallback?: (status: string, percent: number) => void
+    ): Promise<{ success: boolean; error?: string }> {
+        if (process.platform !== 'linux' || !process.env.APPIMAGE) {
+            return { success: false, error: 'Auto-update is only supported for AppImage on Linux' };
+        }
+
+        const currentAppImage = process.env.APPIMAGE;
+        const newAppImage = currentAppImage + '.new';
+
+        try {
+            progressCallback?.('Baixando atualização do launcher...', 0);
+            await this.downloadFile(url, newAppImage, progressCallback);
+
+            progressCallback?.('Instalando atualização...', 90);
+            fs.chmodSync(newAppImage, 0o755);
+
+            // Replace current AppImage
+            const oldAppImage = currentAppImage + '.old';
+            if (fs.existsSync(oldAppImage)) {
+                try {
+                    fs.unlinkSync(oldAppImage);
+                } catch (e) {
+                    console.warn('[UpdateManager] Failed to remove existing .old file:', e);
+                }
+            }
+
+            try {
+                fs.renameSync(currentAppImage, oldAppImage);
+                fs.renameSync(newAppImage, currentAppImage);
+            } catch (e: any) {
+                throw new Error(`Failed to replace AppImage: ${e.message}. Try running the launcher with write permissions.`);
+            }
+
+            progressCallback?.('Reiniciando...', 100);
+            
+            // Relaunch with cleaned environment to avoid FUSE issues
+            const env = { ...process.env };
+            delete env.APPIMAGE;
+            delete env.APPDIR;
+            delete env.OWD;
+
+            const child = spawn(currentAppImage, process.argv.slice(1), {
+                detached: true,
+                stdio: 'ignore',
+                env
+            });
+            child.unref();
+            app.quit();
+
+            return { success: true };
+        } catch (e: any) {
+            console.error('[UpdateManager] Launcher update failed:', e);
+            if (fs.existsSync(newAppImage)) {
+                try { fs.unlinkSync(newAppImage); } catch (err) {}
+            }
+            return { success: false, error: e.message };
+        }
+    }
+
+    /**
+     * Cleans up .AppImage.old files left from previous updates
+     */
+    private cleanupOldAppImages(): void {
+        if (process.platform !== 'linux' || !process.env.APPIMAGE) {
+            console.log('[UpdateManager] Cleanup skipped: Not Linux or not an AppImage');
+            return;
+        }
+
+        try {
+            const currentAppImage = process.env.APPIMAGE;
+            const dir = path.dirname(currentAppImage);
+            const files = fs.readdirSync(dir);
+
+            console.log(`[UpdateManager] Checking for old AppImages in: ${dir}`);
+
+            for (const file of files) {
+                if (file.endsWith('.AppImage.old')) {
+                    const fullPath = path.join(dir, file);
+                    console.log('[UpdateManager] Cleaning up old AppImage:', fullPath);
+                    try {
+                        fs.unlinkSync(fullPath);
+                        console.log('[UpdateManager] Successfully deleted:', fullPath);
+                    } catch (err) {
+                        console.warn(`[UpdateManager] Could not delete ${fullPath}:`, err);
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[UpdateManager] Failed to cleanup old AppImages:', e);
         }
     }
 
