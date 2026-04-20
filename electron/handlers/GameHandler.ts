@@ -10,6 +10,7 @@ import { UpdateManager } from './UpdateManager.js';
 import { Logger } from './Logger.js';
 import { downloadFileResilient } from './DownloadUtil.js';
 import { getOverlayHandler } from '../main.js';
+import { BETA_173_DETAILS } from './VersionData.js';
 
 const execAsync = promisify(exec);
 
@@ -162,32 +163,12 @@ export class GameHandler {
     }
 
     /**
-     * Loads the hardcoded version details for Beta 1.7.3 from local resources.
-     * This eliminates the dependency on Mojang's manifest API.
+     * Returns the hardcoded version details for Beta 1.7.3.
+     * This eliminates the dependency on Mojang's manifest API and local files.
      */
     private async getCachedVersionDetails(): Promise<any> {
-        console.log('[GameHandler] Loading hardcoded version details for Beta 1.7.3');
-        
-        try {
-            // Path to the local version details file
-            const resourcePath = path.join(app.getAppPath(), 'electron', 'resources', 'version_b1.7.3.json');
-            
-            if (fs.existsSync(resourcePath)) {
-                const data = fs.readFileSync(resourcePath, 'utf8');
-                return JSON.parse(data);
-            }
-
-            // Fallback for production (some packers move files around)
-            const prodPath = path.join(process.resourcesPath, 'app', 'electron', 'resources', 'version_b1.7.3.json');
-            if (fs.existsSync(prodPath)) {
-                return JSON.parse(fs.readFileSync(prodPath, 'utf8'));
-            }
-
-            throw new Error(`Local version metadata not found at ${resourcePath}`);
-        } catch (error) {
-            console.error('[GameHandler] Error loading local version metadata:', error);
-            throw error;
-        }
+        console.log('[GameHandler] Using embedded version details for Beta 1.7.3');
+        return BETA_173_DETAILS;
     }
 
     private async checkJava(path: string): Promise<boolean> {

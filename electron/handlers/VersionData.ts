@@ -1,4 +1,4 @@
-{
+export const BETA_173_DETAILS = {
   "assetIndex": {
     "id": "pre-1.6",
     "sha1": "3d8e55480977e32acd9844e545177e69a52f594b",
@@ -283,4 +283,4 @@
   "releaseTime": "2011-07-07T22:00:00+00:00",
   "time": "2011-07-07T22:00:00+00:00",
   "type": "old_beta"
-}
+};
