@@ -5,6 +5,7 @@ import { createWriteStream } from 'fs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import AdmZip from 'adm-zip';
+import { fetchWithRetry } from './NetworkUtil.js';
 
 const execAsync = promisify(exec);
 
@@ -308,11 +309,11 @@ export class JavaManager {
         console.log('[JavaManager] Downloading from:', url);
         
         try {
-            const response = await fetch(url, { redirect: 'follow' });
-            
-            if (!response.ok) {
-                throw new Error(`Failed to download Java: ${response.status} ${response.statusText}`);
-            }
+            const response = await fetchWithRetry(url, { 
+                headers: { 'redirect': 'follow' } as any, // net.fetch handles redirects, but let's be explicit if needed
+                timeoutMs: 25000,
+                maxRetries: 3
+            });
             
             const total = Number(response.headers.get('content-length')) || 0;
             const fileStream = createWriteStream(archivePath);

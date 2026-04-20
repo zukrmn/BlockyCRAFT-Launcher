@@ -10,6 +10,7 @@ import { UpdateManager } from './UpdateManager.js';
 import { Logger } from './Logger.js';
 import { downloadFileResilient } from './DownloadUtil.js';
 import { getOverlayHandler } from '../main.js';
+import { fetchJsonWithRetry } from './NetworkUtil.js';
 
 const execAsync = promisify(exec);
 
@@ -184,13 +185,11 @@ export class GameHandler {
 
         // Fetch fresh
         console.log('[GameHandler] Fetching fresh Mojang version manifest...');
-        const manifestRes = await fetch(VERSION_MANIFEST_URL);
-        const manifest = await manifestRes.json() as any;
+        const manifest = await fetchJsonWithRetry(VERSION_MANIFEST_URL, { timeoutMs: 15000, maxRetries: 3 });
         const versionData = manifest.versions.find((v: any) => v.id === TARGET_VERSION_ID);
         if (!versionData) throw new Error(`Version ${TARGET_VERSION_ID} not found`);
 
-        const versionDetailsRes = await fetch(versionData.url);
-        const versionDetails = await versionDetailsRes.json() as any;
+        const versionDetails = await fetchJsonWithRetry(versionData.url, { timeoutMs: 15000, maxRetries: 3 });
 
         // Save cache
         try {
