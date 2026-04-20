@@ -10,7 +10,6 @@ import { UpdateManager } from './UpdateManager.js';
 import { Logger } from './Logger.js';
 import { downloadFileResilient } from './DownloadUtil.js';
 import { getOverlayHandler } from '../main.js';
-import { fetchJsonWithRetry } from './NetworkUtil.js';
 
 const execAsync = promisify(exec);
 
@@ -73,7 +72,6 @@ async function safeExtractZipWithRetry(zipPath: string, destDir: string, maxRetr
 }
 
 // Beta 1.7.3 Configuration
-const VERSION_MANIFEST_URL = 'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json';
 const TARGET_VERSION_ID = 'b1.7.3';
 
 interface GameSettings {
@@ -100,7 +98,6 @@ export class GameHandler {
     // Performance caches
     private lastUpdateCheck: { result: any; timestamp: number } | null = null;
     private readonly UPDATE_CACHE_TTL = 60000; // 60 seconds
-    private readonly MANIFEST_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
     private lastInstanceVersion: string | null = null;
 
     constructor() {
@@ -165,44 +162,32 @@ export class GameHandler {
     }
 
     /**
-     * Fetches version details with 24h local cache to avoid network requests on every launch
+     * Loads the hardcoded version details for Beta 1.7.3 from local resources.
+     * This eliminates the dependency on Mojang's manifest API.
      */
     private async getCachedVersionDetails(): Promise<any> {
-        const cacheFile = path.join(app.getPath('userData'), 'mojang_version_cache.json');
-
-        // Check cache
-        if (fs.existsSync(cacheFile)) {
-            try {
-                const cached = JSON.parse(fs.readFileSync(cacheFile, 'utf-8'));
-                if (Date.now() - cached.timestamp < this.MANIFEST_CACHE_TTL) {
-                    console.log('[GameHandler] Using cached Mojang version details (TTL: 24h)');
-                    return cached.data;
-                }
-            } catch (e) {
-                console.warn('[GameHandler] Failed to read version cache:', e);
-            }
-        }
-
-        // Fetch fresh
-        console.log('[GameHandler] Fetching fresh Mojang version manifest...');
-        const manifest = await fetchJsonWithRetry(VERSION_MANIFEST_URL, { timeoutMs: 15000, maxRetries: 3 });
-        const versionData = manifest.versions.find((v: any) => v.id === TARGET_VERSION_ID);
-        if (!versionData) throw new Error(`Version ${TARGET_VERSION_ID} not found`);
-
-        const versionDetails = await fetchJsonWithRetry(versionData.url, { timeoutMs: 15000, maxRetries: 3 });
-
-        // Save cache
+        console.log('[GameHandler] Loading hardcoded version details for Beta 1.7.3');
+        
         try {
-            fs.writeFileSync(cacheFile, JSON.stringify({
-                timestamp: Date.now(),
-                data: versionDetails
-            }));
-            console.log('[GameHandler] Saved version details to cache');
-        } catch (e) {
-            console.warn('[GameHandler] Failed to save version cache:', e);
-        }
+            // Path to the local version details file
+            const resourcePath = path.join(app.getAppPath(), 'electron', 'resources', 'version_b1.7.3.json');
+            
+            if (fs.existsSync(resourcePath)) {
+                const data = fs.readFileSync(resourcePath, 'utf8');
+                return JSON.parse(data);
+            }
 
-        return versionDetails;
+            // Fallback for production (some packers move files around)
+            const prodPath = path.join(process.resourcesPath, 'app', 'electron', 'resources', 'version_b1.7.3.json');
+            if (fs.existsSync(prodPath)) {
+                return JSON.parse(fs.readFileSync(prodPath, 'utf8'));
+            }
+
+            throw new Error(`Local version metadata not found at ${resourcePath}`);
+        } catch (error) {
+            console.error('[GameHandler] Error loading local version metadata:', error);
+            throw error;
+        }
     }
 
     private async checkJava(path: string): Promise<boolean> {
