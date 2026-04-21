@@ -234,6 +234,7 @@
     display: flex;
     flex-direction: column;
     padding: var(--spacing-lg);
+    padding-bottom: calc(var(--spacing-lg) * 1.2);
     gap: var(--spacing-lg);
   }
 

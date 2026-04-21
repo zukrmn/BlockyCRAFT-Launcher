@@ -89,7 +89,13 @@ export const translations: Record<string, Record<string, string>> = {
         "skin.slot_limit": "Limit of 5 skins reached. Remove one to add a new one.",
         "skin.slot_saved": "Skin saved to slots!",
         "skin.slot_save_current": "Save to Slot",
-        "ui.change": "Change"
+        "ui.change": "Change",
+        "username.error.empty": "Username cannot be empty.",
+        "username.error.too_short": "Username must have at least 3 characters.",
+        "username.error.too_long": "Username cannot have more than 16 characters.",
+        "username.error.spaces": "Username cannot contain spaces, tabs, or newlines.",
+        "username.error.invalid_chars": "Special characters, accents, or emojis are not allowed. Ex: ! @ # % á ã. Use only a-z, A-Z, 0-9 and _",
+        "username.error.starts_with_number": "Username cannot start with a number."
     },
     "pt-BR": {
         "ui.donate": "Doar",
@@ -181,7 +187,13 @@ export const translations: Record<string, Record<string, string>> = {
         "skin.slot_limit": "Limite de 5 skins atingido. Remova uma para adicionar nova.",
         "skin.slot_saved": "Skin salva nos slots!",
         "skin.slot_save_current": "Salvar no Slot",
-        "ui.change": "Alterar"
+        "ui.change": "Alterar",
+        "username.error.empty": "O username não pode estar vazio.",
+        "username.error.too_short": "O username deve ter pelo menos 3 caracteres.",
+        "username.error.too_long": "O username não pode ter mais de 16 caracteres.",
+        "username.error.spaces": "O username não pode conter espaços, tabulações ou quebras de linha.",
+        "username.error.invalid_chars": "Caracteres especiais, acentos ou emojis não permitidos. Ex: ! @ # % á ã. Use apenas: a-z, A-Z, 0-9 e _",
+        "username.error.starts_with_number": "O username não pode começar com números."
     },
     "es-ES": {
         "ui.donate": "Donar",
@@ -273,7 +285,13 @@ export const translations: Record<string, Record<string, string>> = {
         "skin.slot_limit": "Límite de 5 skins alcanzado. Elimina una para añadir nueva.",
         "skin.slot_saved": "¡Skin guardada en los slots!",
         "skin.slot_save_current": "Guardar en Slot",
-        "ui.change": "Cambiar"
+        "ui.change": "Cambiar",
+        "username.error.empty": "El nombre de usuario no puede estar vacío.",
+        "username.error.too_short": "El nombre de usuario debe tener al menos 3 caracteres.",
+        "username.error.too_long": "El nombre de usuario no puede tener más de 16 caracteres.",
+        "username.error.spaces": "El nombre de usuario no puede contener espacios, tabulaciones o saltos de línea.",
+        "username.error.invalid_chars": "No se permiten caracteres especiales, acentos o emojis. Ej: ! @ # % á ã. Usa solo a-z, A-Z, 0-9 y _",
+        "username.error.starts_with_number": "El nombre de usuario no puede comenzar con números."
     }
 };
 
