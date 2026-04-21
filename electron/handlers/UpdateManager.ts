@@ -120,12 +120,16 @@ export class UpdateManager {
     private async fetchRemoteVersions(): Promise<RemoteVersionInfo | null> {
         for (const url of VERSION_JSON_URLS) {
             try {
-                console.log('[UpdateManager] Trying to fetch versions from:', url);
-                const data = await fetchJsonWithRetry<RemoteVersionInfo>(url, { 
+                // Add timestamp to prevent caching
+                const cacheBuster = `?t=${Date.now()}`;
+                const fetchUrl = url + cacheBuster;
+                
+                console.log('[UpdateManager] Trying to fetch versions from:', fetchUrl);
+                const data = await fetchJsonWithRetry<RemoteVersionInfo>(fetchUrl, { 
                     timeoutMs: 10000, 
                     maxRetries: 2 
                 });
-                console.log('[UpdateManager] Successfully fetched from:', url);
+                console.log('[UpdateManager] Successfully fetched from:', fetchUrl);
                 console.log('[UpdateManager] Remote versions:', data);
 
                 return data;
