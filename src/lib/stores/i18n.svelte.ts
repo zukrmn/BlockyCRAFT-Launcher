@@ -90,12 +90,12 @@ export const translations: Record<string, Record<string, string>> = {
         "skin.slot_saved": "Skin saved to slots!",
         "skin.slot_save_current": "Save to Slot",
         "ui.change": "Change",
-        "username.error.empty": "Username cannot be empty.",
-        "username.error.too_short": "Username must have at least 3 characters.",
-        "username.error.too_long": "Username cannot have more than 16 characters.",
-        "username.error.spaces": "Username cannot contain spaces, tabs, or newlines.",
-        "username.error.invalid_chars": "Special characters, accents, or emojis are not allowed. Ex: ! @ # % á ã. Use only a-z, A-Z, 0-9 and _",
-        "username.error.starts_with_number": "Username cannot start with a number."
+        "username.error.empty": "Username is required.",
+        "username.error.too_short": "Min 3 characters required.",
+        "username.error.too_long": "Max 16 characters allowed.",
+        "username.error.spaces": "No spaces or tabs allowed.",
+        "username.error.invalid_chars": "Only a-z, A-Z, 0-9 and _ allowed (no special chars/emojis).",
+        "username.error.starts_with_number": "Cannot start with a number."
     },
     "pt-BR": {
         "ui.donate": "Doar",
@@ -188,12 +188,12 @@ export const translations: Record<string, Record<string, string>> = {
         "skin.slot_saved": "Skin salva nos slots!",
         "skin.slot_save_current": "Salvar no Slot",
         "ui.change": "Alterar",
-        "username.error.empty": "O username não pode estar vazio.",
-        "username.error.too_short": "O username deve ter pelo menos 3 caracteres.",
-        "username.error.too_long": "O username não pode ter mais de 16 caracteres.",
-        "username.error.spaces": "O username não pode conter espaços, tabulações ou quebras de linha.",
-        "username.error.invalid_chars": "Caracteres especiais, acentos ou emojis não permitidos. Ex: ! @ # % á ã. Use apenas: a-z, A-Z, 0-9 e _",
-        "username.error.starts_with_number": "O username não pode começar com números."
+        "username.error.empty": "Nome de usuário obrigatório.",
+        "username.error.too_short": "Mínimo de 3 caracteres.",
+        "username.error.too_long": "Máximo de 16 caracteres.",
+        "username.error.spaces": "Sem espaços ou tabulações.",
+        "username.error.invalid_chars": "Use apenas a-z, A-Z, 0-9 e _ (sem acentos/emojis).",
+        "username.error.starts_with_number": "Não pode começar com número."
     },
     "es-ES": {
         "ui.donate": "Donar",
@@ -286,12 +286,12 @@ export const translations: Record<string, Record<string, string>> = {
         "skin.slot_saved": "¡Skin guardada en los slots!",
         "skin.slot_save_current": "Guardar en Slot",
         "ui.change": "Cambiar",
-        "username.error.empty": "El nombre de usuario no puede estar vacío.",
-        "username.error.too_short": "El nombre de usuario debe tener al menos 3 caracteres.",
-        "username.error.too_long": "El nombre de usuario no puede tener más de 16 caracteres.",
-        "username.error.spaces": "El nombre de usuario no puede contener espacios, tabulaciones o saltos de línea.",
-        "username.error.invalid_chars": "No se permiten caracteres especiales, acentos o emojis. Ej: ! @ # % á ã. Usa solo a-z, A-Z, 0-9 y _",
-        "username.error.starts_with_number": "El nombre de usuario no puede comenzar con números."
+        "username.error.empty": "Nombre de usuario requerido.",
+        "username.error.too_short": "Mínimo 3 caracteres.",
+        "username.error.too_long": "Máximo 16 caracteres.",
+        "username.error.spaces": "Sin espacios o tabulaciones.",
+        "username.error.invalid_chars": "Solo a-z, A-Z, 0-9 y _ (sin acentos/emojis).",
+        "username.error.starts_with_number": "No puede empezar con un número."
     }
 };
 
