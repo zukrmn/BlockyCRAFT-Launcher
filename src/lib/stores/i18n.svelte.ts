@@ -89,7 +89,13 @@ export const translations: Record<string, Record<string, string>> = {
         "skin.slot_limit": "Limit of 5 skins reached. Remove one to add a new one.",
         "skin.slot_saved": "Skin saved to slots!",
         "skin.slot_save_current": "Save to Slot",
-        "ui.change": "Change"
+        "ui.change": "Change",
+        "username.error.empty": "Username is required.",
+        "username.error.too_short": "Min 3 characters required.",
+        "username.error.too_long": "Max 16 characters allowed.",
+        "username.error.spaces": "No spaces or tabs allowed.",
+        "username.error.invalid_chars": "Only a-z, A-Z, 0-9 and _ allowed (no special chars/emojis).",
+        "username.error.starts_with_number": "Cannot start with a number."
     },
     "pt-BR": {
         "ui.donate": "Doar",
@@ -181,7 +187,13 @@ export const translations: Record<string, Record<string, string>> = {
         "skin.slot_limit": "Limite de 5 skins atingido. Remova uma para adicionar nova.",
         "skin.slot_saved": "Skin salva nos slots!",
         "skin.slot_save_current": "Salvar no Slot",
-        "ui.change": "Alterar"
+        "ui.change": "Alterar",
+        "username.error.empty": "Nome de usuário obrigatório.",
+        "username.error.too_short": "Mínimo de 3 caracteres.",
+        "username.error.too_long": "Máximo de 16 caracteres.",
+        "username.error.spaces": "Sem espaços ou tabulações.",
+        "username.error.invalid_chars": "Use apenas a-z, A-Z, 0-9 e _ (sem acentos/emojis).",
+        "username.error.starts_with_number": "Não pode começar com número."
     },
     "es-ES": {
         "ui.donate": "Donar",
@@ -273,7 +285,13 @@ export const translations: Record<string, Record<string, string>> = {
         "skin.slot_limit": "Límite de 5 skins alcanzado. Elimina una para añadir nueva.",
         "skin.slot_saved": "¡Skin guardada en los slots!",
         "skin.slot_save_current": "Guardar en Slot",
-        "ui.change": "Cambiar"
+        "ui.change": "Cambiar",
+        "username.error.empty": "Nombre de usuario requerido.",
+        "username.error.too_short": "Mínimo 3 caracteres.",
+        "username.error.too_long": "Máximo 16 caracteres.",
+        "username.error.spaces": "Sin espacios o tabulaciones.",
+        "username.error.invalid_chars": "Solo a-z, A-Z, 0-9 y _ (sin acentos/emojis).",
+        "username.error.starts_with_number": "No puede empezar con un número."
     }
 };
 

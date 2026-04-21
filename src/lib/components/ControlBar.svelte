@@ -1,6 +1,9 @@
 <script lang="ts">
   import { ElectronService } from "../electron";
   import { i18n } from "../stores/i18n.svelte";
+  import { validateUsername } from "../utils/validation";
+
+  let usernameError = $state("");
 
 
   let {
@@ -26,12 +29,22 @@
     }
   }
 
+  function triggerLaunch() {
+    usernameError = "";
+    const err = validateUsername(username);
+    if (err) {
+      usernameError = i18n.t(err);
+      return;
+    }
+    handleLaunch();
+  }
+
   function onKey(e: KeyboardEvent) {
     if (e.key === "Enter" && username.trim()) {
       if (launcherUpdateAvailable) {
         onUpdateClick();
       } else {
-        handleLaunch();
+        triggerLaunch();
       }
     }
   }
@@ -50,8 +63,12 @@
       bind:value={username}
       placeholder={i18n.t("ui.username_placeholder")}
       onkeydown={onKey}
+      oninput={() => usernameError = ""}
       disabled={isLaunching || isGameRunning}
     />
+    {#if usernameError}
+      <div class="error-text">{usernameError}</div>
+    {/if}
   </div>
 
   <!-- Play / Update / Loading / Close -->
@@ -73,7 +90,7 @@
   {:else}
     <button
       class="btn-play"
-      onclick={handleLaunch}
+      onclick={triggerLaunch}
       disabled={!username.trim()}
     >
       {i18n.t("ui.play")}
@@ -228,6 +245,24 @@
     color: #666;
     cursor: not-allowed;
     border-color: #222;
+  }
+
+  .error-text {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 420px; /* Increased width to prevent excessive wrapping */
+    text-align: center;
+    color: #ef4444; /* Red color matching user request */
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-top: 4px;
+    line-height: 1.2;
+    white-space: normal;
+    z-index: 20;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
   }
   .loading-wrapper {
     display: flex;
