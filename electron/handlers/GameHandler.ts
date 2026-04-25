@@ -869,6 +869,7 @@ end tell
 
             // Auto-connect to BlockyCRAFT server
             launchArgs.push('--server', '185.100.215.195');
+            //launchArgs.push('--server', 'localhost');
             launchArgs.push('--port', '25565');
 
 

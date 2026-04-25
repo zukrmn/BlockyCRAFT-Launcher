@@ -279,9 +279,9 @@
                         class:selected={currentHotkey === hotkey}
                         onclick={() => selectHotkey(hotkey)}
                       >
-                        {#if hotkey === 'CommandOrControl+Tab'}
+                        {#if hotkey === 'Command+Shift+Tab'}
                           <span class="hotkey-icon">{@html Icons.Command}</span>
-                          <span>/ Ctrl + Tab</span>
+                          <span>Shift + Tab</span>
                         {:else}
                           <span>{hotkey.replace('+', ' + ')}</span>
                         {/if}

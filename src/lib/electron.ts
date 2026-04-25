@@ -125,7 +125,7 @@ export const ElectronService = {
     async getOverlayHotkey(): Promise<string> {
         if (!electron) {
             return (window as any).navigator?.platform?.toLowerCase().includes('mac') 
-                ? 'CommandOrControl+Tab' 
+                ? 'Command+Shift+Tab' 
                 : 'Shift+Tab';
         }
         return electron.invoke('get-overlay-hotkey', null) as Promise<string>;
@@ -137,7 +137,7 @@ export const ElectronService = {
     },
 
     async getAvailableHotkeys(): Promise<string[]> {
-        if (!electron) return ['Shift+Tab', 'CommandOrControl+Tab'];
+        if (!electron) return ['Shift+Tab', 'Command+Shift+Tab'];
         return electron.invoke('get-available-hotkeys', null) as Promise<string[]>;
     }
 };

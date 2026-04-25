@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs';
 
 // Available hotkeys for user selection
-const AVAILABLE_HOTKEYS = ['Shift+Tab', 'CommandOrControl+Tab'];
+const AVAILABLE_HOTKEYS = ['Shift+Tab', 'Command+Shift+Tab'];
 
 /**
  * Handles the in-game browser overlay functionality.
@@ -73,7 +73,11 @@ export class OverlayHandler {
      */
     private getDefaultHotkey(): string {
         if (process.platform === 'darwin') {
-            return 'CommandOrControl+Tab';
+            // 'Command+Tab' is reserved by macOS (App Switcher) and cannot be
+            // intercepted by Electron's globalShortcut API — it returns false silently.
+            // 'Command+Shift+Tab' is only captured by macOS when the App Switcher is
+            // already open (to navigate backwards), so it is free during gameplay.
+            return 'Command+Shift+Tab';
         }
         return 'Shift+Tab';
     }
@@ -85,6 +89,12 @@ export class OverlayHandler {
         try {
             if (fs.existsSync(this.configPath)) {
                 const config = JSON.parse(fs.readFileSync(this.configPath, 'utf-8'));
+                // Migrate legacy 'CommandOrControl+Tab' (macOS system-reserved, non-interceptable)
+                // to the new default 'Command+Shift+Tab' which works correctly on macOS.
+                if (config.hotkey === 'CommandOrControl+Tab') {
+                    Logger.warn('OverlayHandler', 'Detected legacy macOS hotkey \'CommandOrControl+Tab\' — migrating to \'Command+Shift+Tab\'');
+                    return this.getDefaultHotkey();
+                }
                 if (config.hotkey && AVAILABLE_HOTKEYS.includes(config.hotkey)) {
                     return config.hotkey;
                 }
@@ -136,7 +146,7 @@ export class OverlayHandler {
                 Logger.info('OverlayHandler', `Overlay hotkey registered: ${key}`);
                 return true;
             } else {
-                Logger.warn('OverlayHandler', `Failed to register hotkey: ${key}`);
+                Logger.warn('OverlayHandler', `Failed to register hotkey: ${key}. The OS may have reserved this shortcut (e.g. Command+Tab on macOS).`);
                 return false;
             }
         } catch (e: any) {
